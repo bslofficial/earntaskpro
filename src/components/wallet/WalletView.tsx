@@ -36,13 +36,13 @@ export const WalletView: React.FC = () => {
   const [copiedTrxId, setCopiedTrxId] = useState<string | null>(null);
 
   // Deposit form state
-  const [depositAmount, setDepositAmount] = useState('200');
+  const [depositAmount, setDepositAmount] = useState(settings.minDepositForTasks.toString());
   const [senderNumber, setSenderNumber] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [copiedNumber, setCopiedNumber] = useState(false);
 
   // Withdraw form state
-  const [withdrawAmount, setWithdrawAmount] = useState('150');
+  const [withdrawAmount, setWithdrawAmount] = useState(settings.minWithdrawAmount.toString());
   const [receiverNumber, setReceiverNumber] = useState('');
 
   // Status message
@@ -191,8 +191,8 @@ export const WalletView: React.FC = () => {
             </h4>
             <p className="text-xs text-zinc-400">
               {language === 'bn'
-                ? 'পছন্দের পেমেন্ট মাধ্যম সিলেক্ট করে নিচে দেওয়া নম্বরে টাকা পাঠান এবং TrxID দিন।'
-                : 'Select payment method, send money to the number below, and enter TrxID.'}
+                ? `সর্বনিম্ন ডিপোজিট ৳${settings.minDepositForTasks}। পছন্দের পেমেন্ট মাধ্যম সিলেক্ট করে নিচে দেওয়া নম্বরে টাকা পাঠান এবং TrxID দিন।`
+                : `Minimum deposit is ৳${settings.minDepositForTasks}. Select payment method, send money, and enter TrxID.`}
             </p>
           </div>
 
@@ -252,13 +252,13 @@ export const WalletView: React.FC = () => {
               </label>
               <input
                 type="number"
-                min="100"
+                min={settings.minDepositForTasks}
                 step="10"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 required
                 className="w-full px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono focus:border-amber-500 focus:outline-none text-sm"
-                placeholder="200"
+                placeholder={settings.minDepositForTasks.toString()}
               />
             </div>
 

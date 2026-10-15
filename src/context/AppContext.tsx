@@ -66,7 +66,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (!parsed.depositAccounts || parsed.depositAccounts.bKash.includes('01812') || !parsed.depositAccounts.bKash.includes('01913932587')) {
           parsed.depositAccounts = DEFAULT_SETTINGS.depositAccounts;
         }
-        return { ...DEFAULT_SETTINGS, ...parsed, depositAccounts: DEFAULT_SETTINGS.depositAccounts };
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          minWithdrawAmount: (!parsed.minWithdrawAmount || parsed.minWithdrawAmount <= 100) ? 5000 : parsed.minWithdrawAmount,
+          minDepositForTasks: (!parsed.minDepositForTasks || parsed.minDepositForTasks === 0) ? 300 : parsed.minDepositForTasks,
+          depositAccounts: DEFAULT_SETTINGS.depositAccounts
+        };
       }
       return DEFAULT_SETTINGS;
     } catch {
@@ -678,6 +684,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Wallet: Deposit
   const requestDeposit = (method: PaymentMethod, amount: number, senderNumber: string, transactionId: string) => {
     if (!currentUser) return resultWithToast({ success: false, message: 'Please login first' });
+    if (amount < settings.minDepositForTasks) {
+      return resultWithToast({
+        success: false,
+        message: language === 'bn' ? `সর্বনিম্ন ডিপোজিট ৳${settings.minDepositForTasks}!` : `Minimum deposit is ৳${settings.minDepositForTasks}!`,
+      });
+    }
     if (amount <= 0) return resultWithToast({ success: false, message: language === 'bn' ? 'সঠিক পরিমাণ টাকা দিন।' : 'Enter valid amount.' });
     if (!senderNumber.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'প্রেরক নম্বর দিন।' : 'Enter sender number.' });
     if (!transactionId.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'ট্রানজেকশন আইডি (TrxID) দিন।' : 'Enter TrxID.' });

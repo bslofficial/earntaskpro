@@ -10,8 +10,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxDailyQuizzes: 5,
   quizReward: 10,
   referBonus: 50,
-  minWithdrawAmount: 100,
-  minDepositForTasks: 0,
+  minWithdrawAmount: 5000,
+  minDepositForTasks: 300,
   depositAccounts: {
     bKash: "01913932587 (Personal / Send Money)",
     Nagad: "01913932587 (Personal / Send Money)",

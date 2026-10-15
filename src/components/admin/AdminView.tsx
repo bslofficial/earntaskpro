@@ -479,6 +479,18 @@ export const AdminView: React.FC = () => {
                 className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
               />
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                {language === 'bn' ? 'সর্বনিম্ন ডিপোজিট লিমিট (৳)' : 'Min Deposit Amount (৳)'}
+              </label>
+              <input
+                type="number"
+                value={localSettings.minDepositForTasks}
+                onChange={(e) => setLocalSettings({ ...localSettings, minDepositForTasks: Number(e.target.value) })}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+              />
+            </div>
           </div>
 
           {/* Payment Receiver numbers */}
