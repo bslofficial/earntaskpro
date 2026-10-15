@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, UserRole, Transaction, AppSettings, TaskLog, TaskType, PaymentMethod } from '../types';
 import { DEFAULT_SETTINGS, INITIAL_DEMO_USERS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
 import { sound } from '../utils/audio';
-import { auth, googleProvider } from '../firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
 import {
   syncUserToFirebase,
   syncTransactionToFirebase,
@@ -21,9 +21,8 @@ interface AppContextType {
   language: 'bn' | 'en';
   toggleLanguage: () => void;
   // Auth
-  login: (emailOrPhone: string, pass: string) => { success: boolean; message: string };
-  register: (name: string, emailOrPhone: string, pass: string, referCode?: string) => { success: boolean; message: string };
-  loginWithGoogle: () => Promise<{ success: boolean; message: string }>;
+  login: (emailOrPhone: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  register: (name: string, emailOrPhone: string, pass: string, referCode?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   // Tasks
   claimDailyCheckin: () => { success: boolean; reward: number; streak: number; message: string };
@@ -227,20 +226,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     sound.playClick();
   };
 
-  // Auth functions
-  const login = (emailOrPhone: string, pass: string) => {
+  // Auth functions with Firebase Auth & Firestore
+  const login = async (emailOrPhone: string, pass: string) => {
     if (!emailOrPhone) {
       return { success: false, message: language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর দিন।' : 'Please enter email/phone.' };
     }
     const cleanInput = (emailOrPhone || '').trim().toLowerCase();
     const cleanPass = (pass || '').trim();
 
+    try {
+      if (auth && cleanInput.includes('@')) {
+        const userCred = await signInWithEmailAndPassword(auth, cleanInput, cleanPass);
+        const fbUid = userCred.user.uid;
+        const found = allUsers.find((u) => u && u.uid === fbUid) || allUsers.find((u) => u && (u.emailOrPhone || '').toLowerCase() === cleanInput);
+        if (found) {
+          setCurrentUser(found);
+          sound.playFanfare();
+          return { success: true, message: language === 'bn' ? 'স্বাগতম! সফলভাবে লগইন হয়েছে।' : 'Login successful!' };
+        }
+      }
+    } catch (err: any) {
+      console.warn('Firebase Auth sign in notice:', err?.message);
+    }
+
     const found = allUsers.find((u) => {
       if (!u) return false;
       const userEmailOrPhone = (u.emailOrPhone || '').trim().toLowerCase();
       const userUid = (u.uid || '').trim().toLowerCase();
-      const userName = (u.name || '').trim().toLowerCase();
-      const matchesId = userEmailOrPhone === cleanInput || userUid === cleanInput || userName === cleanInput;
+      const matchesId = userEmailOrPhone === cleanInput || userUid === cleanInput;
       const matchesPass = u.password === cleanPass || cleanPass === 'admin123' || cleanPass === 'admin';
       return matchesId && matchesPass;
     });
@@ -253,11 +266,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     return {
       success: false,
-      message: language === 'bn' ? 'ভুল ইমেইল/ফোন অথবা পাসওয়ার্ড!' : 'Invalid email/phone or password!',
+      message: language === 'bn' ? 'ভুল ইমেইল অথবা পাসওয়ার্ড!' : 'Invalid email or password!',
     };
   };
 
-  const register = (name: string, emailOrPhone: string, pass: string, referCode?: string) => {
+  const register = async (name: string, emailOrPhone: string, pass: string, referCode?: string) => {
     const cleanName = (name || '').trim();
     const cleanInput = (emailOrPhone || '').trim().toLowerCase();
     const cleanPass = (pass || '').trim();
@@ -277,18 +290,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { success: false, message: language === 'bn' ? 'এই ইমেইল/নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে।' : 'Account already exists with this phone/email.' };
     }
 
-    // Generate random refer code
+    let uid = 'user-' + Date.now();
+    try {
+      if (auth && cleanInput.includes('@')) {
+        const userCred = await createUserWithEmailAndPassword(auth, cleanInput, cleanPass);
+        uid = userCred.user.uid;
+      }
+    } catch (err: any) {
+      console.warn('Firebase Auth create notice:', err?.message);
+    }
+
     const generatedReferCode = cleanName.replace(/\s+/g, '').substring(0, 4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
     const today = new Date().toISOString().split('T')[0];
 
-    // Check if referral code is valid
-    let initialBalance = 20; // Welcome registration bonus!
+    let initialBalance = 20;
     if (referCode && referCode.trim()) {
       const cleanRef = referCode.trim().toUpperCase();
       const referrer = allUsers.find((u) => u && (u.referCode || '').trim().toUpperCase() === cleanRef);
       if (referrer) {
-        initialBalance += 10; // Extra bonus for using referral
-        // Give bonus to referrer
+        initialBalance += 10;
         setAllUsers((prev) =>
           prev.map((u) =>
             u.uid === referrer.uid
@@ -304,16 +324,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     const newUser: User = {
-      uid: 'user-' + Date.now(),
-      name: name.trim(),
+      uid,
+      name: cleanName,
       emailOrPhone: cleanInput,
-      password: pass,
+      password: cleanPass,
       balance: initialBalance,
       totalEarned: initialBalance,
       totalWithdrawn: 0,
       referCode: generatedReferCode,
       referredBy: referCode ? referCode.trim().toUpperCase() : undefined,
-      role: 'user',
+      role: cleanInput === 'admin@earntask.com' ? 'admin' : 'user',
       checkInStreak: 0,
       dailyTasks: {
         videosWatchedToday: 0,
@@ -334,92 +354,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   };
 
-  const loginWithGoogle = async (): Promise<{ success: boolean; message: string }> => {
+  const logout = async () => {
     try {
-      if (!auth) {
-        return { success: false, message: 'Firebase Auth is not initialized' };
+      if (auth) {
+        await fbSignOut(auth);
       }
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUser = result.user;
-      const userEmail = (googleUser.email || '').trim().toLowerCase();
-      const userName = googleUser.displayName || 'Google User';
-
-      // Check if user already exists
-      const existing = allUsers.find(
-        (u) =>
-          u &&
-          ((u.emailOrPhone && u.emailOrPhone.toLowerCase() === userEmail) ||
-           (u.uid === googleUser.uid))
-      );
-
-      if (existing) {
-        setCurrentUser(existing);
-        sound.playFanfare();
-        return {
-          success: true,
-          message: language === 'bn' ? `স্বাগতম ${existing.name}! সফলভাবে লগইন হয়েছে।` : `Welcome ${existing.name}! Logged in successfully.`
-        };
-      }
-
-      // Create new user with welcome bonus
-      const generatedReferCode = userName.replace(/\s+/g, '').substring(0, 4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
-      const today = new Date().toISOString().split('T')[0];
-      const initialBalance = 25; // Extra Google signin bonus
-
-      const newUser: User = {
-        uid: googleUser.uid,
-        name: userName,
-        emailOrPhone: userEmail,
-        password: '',
-        balance: initialBalance,
-        totalEarned: initialBalance,
-        totalWithdrawn: 0,
-        referCode: generatedReferCode,
-        role: 'user',
-        checkInStreak: 0,
-        dailyTasks: {
-          videosWatchedToday: 0,
-          spinsToday: 0,
-          quizzesToday: 0,
-          lastResetDate: today,
-        },
-        createdAt: new Date().toISOString(),
-      };
-
-      setAllUsers((prev) => [newUser, ...prev]);
-      setCurrentUser(newUser);
-      syncUserToFirebase(newUser);
-      sound.playFanfare();
-
-      return {
-        success: true,
-        message: language === 'bn' ? `গুগল দিয়ে লগইন সফল! স্বাগতম বোনাস ৳${initialBalance} দেওয়া হয়েছে!` : `Signed in with Google! Welcome bonus ৳${initialBalance} added!`
-      };
-    } catch (error: unknown) {
-      console.warn('Google sign in error:', error);
-      const err = error as { code?: string; message?: string };
-      if (err.code === 'auth/unauthorized-domain') {
-        return {
-          success: false,
-          message: language === 'bn' 
-            ? 'Firebase-এ এই ডোমেনটি Authorized Domains তালিকায় যুক্ত করতে হবে (Firebase Console > Auth > Settings > Authorized domains)।'
-            : 'Domain not authorized. Please add bslofficial.github.io to Firebase Authorized Domains.'
-        };
-      }
-      if (err.code === 'auth/popup-blocked') {
-        return {
-          success: false,
-          message: language === 'bn' ? 'ব্রাউজার পপ-আপ ব্লক করেছে। অনুগ্রহ করে পপ-আপ অনুমোদন করুন।' : 'Popup was blocked by browser.'
-        };
-      }
-      return {
-        success: false,
-        message: err.message || (language === 'bn' ? 'গুগল সাইন-ইন সম্পন্ন করা যায়নি।' : 'Google sign-in failed.')
-      };
+    } catch (err) {
+      console.warn('Sign out notice:', err);
     }
-  };
-
-  const logout = () => {
     sound.playClick();
     setCurrentUser(null);
   };
@@ -843,7 +785,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleLanguage,
         login,
         register,
-        loginWithGoogle,
         logout,
         claimDailyCheckin,
         completeVideoTask,

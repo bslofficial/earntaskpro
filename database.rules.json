@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "withdraw_requests": {
+      ".indexOn": ["uid"]
+    },
+    "users": {
+      ".indexOn": ["balance", "referCode"]
+    }
+  }
+}
