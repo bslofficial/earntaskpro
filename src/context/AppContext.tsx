@@ -86,10 +86,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (saved) {
         return JSON.parse(saved);
       }
-      // Default to demo user for instant exploration
-      return INITIAL_DEMO_USERS[1];
+      return null;
     } catch {
-      return INITIAL_DEMO_USERS[1];
+      return null;
     }
   });
 
