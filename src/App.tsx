@@ -34,6 +34,18 @@ const MainApp: React.FC = () => {
   const [isReferOpen, setIsReferOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
+  // Support URL hash like #admin for discreet admin panel access
+  React.useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#admin') {
+        setActiveTab('admin');
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
   const handleSelectBannerTask = (taskKey: string) => {
     if (taskKey === 'spin') setIsSpinOpen(true);
     else if (taskKey === 'video') setIsVideoOpen(true);

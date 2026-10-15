@@ -88,16 +88,6 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth, onNaviga
 
           {/* Action buttons */}
           <div className="flex items-center gap-2">
-            {currentUser.role === 'admin' && onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab('admin')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin Panel'}</span>
-              </button>
-            )}
-
             <button
               onClick={logout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-400 border border-zinc-800 text-xs font-semibold transition cursor-pointer"
