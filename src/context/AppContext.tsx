@@ -20,6 +20,9 @@ interface AppContextType {
   settings: AppSettings;
   language: 'bn' | 'en';
   toggleLanguage: () => void;
+  toast: { message: string; type: 'success' | 'error' | 'info' } | null;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  hideToast: () => void;
   // Auth
   login: (emailOrPhone: string, pass: string) => Promise<{ success: boolean; message: string }>;
   register: (name: string, emailOrPhone: string, pass: string, referCode?: string) => Promise<{ success: boolean; message: string }>;
@@ -71,26 +74,71 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
+  const generate150Users = (): User[] => {
+    const firstNames = ["রিফাত", "নাজমুল", "তানভীর", "সাকিব", "রাকিব", "শরিফুল", "ইমরান", "ফারহান", "সোহাগ", "জনি", "পার্থ", "শাকিল", "মামুন", "সাগর", "হাসান", "হৃদয়", "আকাশ", "শান্ত", "শুভ", "নাহিদ", "ফাহিম", "সিয়াম", "রাফি", "জয়", "তুষার", "আরিফ", "সাদিয়া", "নাজনীন", "তানিয়া", "মীম", "সুরাইয়া", "ফাতেমা", "আয়েশা", "নুসরাত", "সাবিহা"];
+    const lastNames = ["ইসলাম", "হোসেন", "আহমেদ", "চৌধুরী", "খান", "মোল্লা", "তালুকদার", "সরকার", "মিয়া", "বিশ্বাস", "মন্ডল", "প্রামাণিক"];
+    const prefixes = ["017", "018", "019", "016", "013", "014"];
+
+    const users: User[] = [
+      {
+        uid: "admin-master",
+        name: "Admin Boss",
+        emailOrPhone: "admin@earntask.com",
+        password: "admin",
+        balance: 5000,
+        totalEarned: 125000,
+        totalWithdrawn: 75000,
+        referCode: "ADMIN777",
+        role: "admin",
+        checkInStreak: 45,
+        dailyTasks: { videosWatchedToday: 0, spinsToday: 0, quizzesToday: 0, lastResetDate: new Date().toISOString().split('T')[0] },
+        createdAt: new Date().toISOString(),
+        totalDeposited: 5000
+      }
+    ];
+
+    for (let i = 1; i < 150; i++) {
+      const fn = firstNames[i % firstNames.length];
+      const ln = lastNames[(i * 3) % lastNames.length];
+      const phone = `${prefixes[i % prefixes.length]}${Math.floor(10000000 + (i * 123456) % 90000000)}`;
+      const totalEarned = Math.floor(45000 - (i * 285) + 500);
+      const balance = Math.floor(totalEarned * 0.2);
+      const totalWithdrawn = Math.floor(totalEarned * 0.7);
+      users.push({
+        uid: `demo-user-${i}`,
+        name: `${fn} ${ln}`,
+        emailOrPhone: phone,
+        password: "user123",
+        balance: Math.max(10, balance),
+        totalEarned: Math.max(50, totalEarned),
+        totalWithdrawn: Math.max(0, totalWithdrawn),
+        referCode: `REF${1000 + i}`,
+        role: "user",
+        checkInStreak: (i % 25) + 1,
+        dailyTasks: { videosWatchedToday: 2, spinsToday: 2, quizzesToday: 1, lastResetDate: new Date().toISOString().split('T')[0] },
+        createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+        totalDeposited: 300
+      });
+    }
+    return users.sort((a, b) => b.totalEarned - a.totalEarned);
+  };
+
   const [allUsers, setAllUsers] = useState<User[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      return saved ? JSON.parse(saved) : INITIAL_DEMO_USERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 150) {
+          return parsed;
+        }
+      }
+      return generate150Users();
     } catch {
-      return INITIAL_DEMO_USERS;
+      return generate150Users();
     }
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -114,6 +162,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return (localStorage.getItem(STORAGE_KEYS.LANGUAGE) as 'bn' | 'en') || 'bn';
   });
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  const hideToast = () => setToast(null);
+
+  const resultWithToast = <T extends { success: boolean; message: string }>(res: T, type?: 'success' | 'error' | 'info'): T => {
+    showToast(res.message, type || (res.success ? 'success' : 'error'));
+    return res;
+  };
+
   // Subscribe to Firebase Realtime Database on mount
   useEffect(() => {
     const unsub = subscribeToFirebaseData(
@@ -127,6 +191,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             balance: typeof u.balance === 'number' ? u.balance : 0,
             totalEarned: typeof u.totalEarned === 'number' ? u.totalEarned : 0,
             totalWithdrawn: typeof u.totalWithdrawn === 'number' ? u.totalWithdrawn : 0,
+            totalDeposited: typeof u.totalDeposited === 'number' ? u.totalDeposited : (u.role === 'admin' ? 1000 : 0),
             referCode: u.referCode || `REF${i + 100}`,
             role: (u.role === 'admin' ? 'admin' : 'user') as UserRole,
             checkInStreak: u.checkInStreak || 0,
@@ -277,8 +342,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!cleanName) {
       return { success: false, message: language === 'bn' ? 'দয়া করে আপনার নাম দিন।' : 'Please enter your name.' };
     }
-    if (!cleanInput) {
-      return { success: false, message: language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর দিন।' : 'Please enter email/phone.' };
+    if (!cleanInput || !cleanInput.includes('@')) {
+      return { success: false, message: language === 'bn' ? 'দয়া করে একটি সঠিক ইমেইল অ্যাড্রেস দিন।' : 'Please enter a valid email address.' };
     }
     if (cleanPass.length < 4) {
       return { success: false, message: language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।' : 'Password must be at least 4 characters.' };
@@ -286,7 +351,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const exists = allUsers.some((u) => u && (u.emailOrPhone || '').trim().toLowerCase() === cleanInput);
     if (exists) {
-      return { success: false, message: language === 'bn' ? 'এই ইমেইল/নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে।' : 'Account already exists with this phone/email.' };
+      return { success: false, message: language === 'bn' ? 'এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে।' : 'Account already exists with this email.' };
     }
 
     let uid = 'user-' + Date.now();
@@ -330,6 +395,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       balance: initialBalance,
       totalEarned: initialBalance,
       totalWithdrawn: 0,
+      totalDeposited: 0,
       referCode: generatedReferCode,
       referredBy: referCode ? referCode.trim().toUpperCase() : undefined,
       role: cleanInput === 'admin@earntask.com' ? 'admin' : 'user',
@@ -368,17 +434,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Task Completion: Daily Check-in
   const claimDailyCheckin = () => {
     if (!currentUser) {
-      return { success: false, reward: 0, streak: 0, message: 'Please login first' };
+      return resultWithToast({ success: false, reward: 0, streak: 0, message: 'Please login first' });
+    }
+
+    const minDep = settings.minDepositForTasks ?? 300;
+    if (currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < minDep) {
+      return resultWithToast({
+        success: false,
+        reward: 0,
+        streak: currentUser.checkInStreak,
+        message: language === 'bn'
+          ? `কাজ করার জন্য কমপক্ষে ৳${minDep} ডিপোজিট করতে হবে! দয়া করে আগে ডিপোজিট করুন।`
+          : `Minimum ৳${minDep} deposit required to work! Please deposit first.`
+      });
     }
 
     const today = new Date().toISOString().split('T')[0];
     if (currentUser.lastCheckInDate === today) {
-      return {
+      return resultWithToast({
         success: false,
         reward: 0,
         streak: currentUser.checkInStreak,
         message: language === 'bn' ? 'আজকের ডেইলি চেক-ইন আপনি ইতিমধ্যে নিয়ে নিয়েছেন!' : 'You have already claimed today’s check-in!',
-      };
+      });
     }
 
     // Check if yesterday was checked in to increment streak
@@ -411,27 +489,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncTaskLogToFirebase(log);
 
     sound.playCoin();
-    return {
+    return resultWithToast({
       success: true,
       reward,
       streak: newStreak,
       message: language === 'bn' ? `অভিনন্দন! আপনি ৳${reward} ক্লেইম করেছেন!` : `Congratulations! Claimed ৳${reward}!`,
-    };
+    });
   };
 
   // Task Completion: Video Ad Task
   const completeVideoTask = () => {
     if (!currentUser) {
-      return { success: false, reward: 0, message: 'Please login first' };
+      return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
+    }
+
+    const minDep = settings.minDepositForTasks ?? 300;
+    if (currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < minDep) {
+      return resultWithToast({
+        success: false,
+        reward: 0,
+        message: language === 'bn'
+          ? `কাজ করার জন্য কমপক্ষে ৳${minDep} ডিপোজিট করতে হবে! দয়া করে আগে ডিপোজিট করুন।`
+          : `Minimum ৳${minDep} deposit required to work! Please deposit first.`
+      });
     }
 
     const watched = currentUser.dailyTasks.videosWatchedToday;
     if (watched >= settings.maxDailyVideos) {
-      return {
+      return resultWithToast({
         success: false,
         reward: 0,
         message: language === 'bn' ? 'আজকের ভিডিও দেখার সর্বোচ্চ লিমিট শেষ!' : 'Daily video limit reached!',
-      };
+      });
     }
 
     const reward = settings.videoTaskReward;
@@ -459,26 +548,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncTaskLogToFirebase(log);
 
     sound.playCoin();
-    return {
+    return resultWithToast({
       success: true,
       reward,
       message: language === 'bn' ? `ভিডিও সম্পন্ন হয়েছে! ৳${reward} ব্যালেন্সে যোগ হয়েছে।` : `Video completed! ৳${reward} added.`,
-    };
+    });
   };
 
   // Task Completion: Lucky Spin
   const completeLuckySpin = (customReward?: number) => {
     if (!currentUser) {
-      return { success: false, reward: 0, message: 'Please login first' };
+      return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
+    }
+
+    const minDep = settings.minDepositForTasks ?? 300;
+    if (currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < minDep) {
+      return resultWithToast({
+        success: false,
+        reward: 0,
+        message: language === 'bn'
+          ? `কাজ করার জন্য কমপক্ষে ৳${minDep} ডিপোজিট করতে হবে! দয়া করে আগে ডিপোজিট করুন।`
+          : `Minimum ৳${minDep} deposit required to work! Please deposit first.`
+      });
     }
 
     const spins = currentUser.dailyTasks.spinsToday;
     if (spins >= settings.maxDailySpins) {
-      return {
+      return resultWithToast({
         success: false,
         reward: 0,
         message: language === 'bn' ? 'আজকের স্পিন লিমিট শেষ!' : 'Daily spin limit reached!',
-      };
+      });
     }
 
     // Default to random if not specified
@@ -511,26 +611,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       sound.playFanfare();
     }
 
-    return {
+    return resultWithToast({
       success: true,
       reward,
       message: reward > 0 ? (language === 'bn' ? `অভিনন্দন! আপনি ৳${reward} জিতেছেন!` : `Congratulations! You won ৳${reward}!`) : (language === 'bn' ? 'দুঃখিত, এবার কিছু পাননি। আবার চেষ্টা করুন!' : 'Better luck next time!'),
-    };
+    });
   };
 
   // Task Completion: Quiz
   const completeQuiz = (reward: number) => {
     if (!currentUser) {
-      return { success: false, reward: 0, message: 'Please login first' };
+      return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
+    }
+
+    const minDep = settings.minDepositForTasks ?? 300;
+    if (currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < minDep) {
+      return resultWithToast({
+        success: false,
+        reward: 0,
+        message: language === 'bn'
+          ? `কাজ করার জন্য কমপক্ষে ৳${minDep} ডিপোজিট করতে হবে! দয়া করে আগে ডিপোজিট করুন।`
+          : `Minimum ৳${minDep} deposit required to work! Please deposit first.`
+      });
     }
 
     const quizzes = currentUser.dailyTasks.quizzesToday;
     if (quizzes >= settings.maxDailyQuizzes) {
-      return {
+      return resultWithToast({
         success: false,
         reward: 0,
         message: language === 'bn' ? 'আজকের কুইজ লিমিট শেষ!' : 'Daily quiz limit reached!',
-      };
+      });
     }
 
     const updatedUser: User = {
@@ -557,19 +668,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncTaskLogToFirebase(log);
 
     sound.playCoin();
-    return {
+    return resultWithToast({
       success: true,
       reward,
       message: language === 'bn' ? `সঠিক উত্তর! ৳${reward} যোগ করা হয়েছে।` : `Correct! ৳${reward} credited.`,
-    };
+    });
   };
 
   // Wallet: Deposit
   const requestDeposit = (method: PaymentMethod, amount: number, senderNumber: string, transactionId: string) => {
-    if (!currentUser) return { success: false, message: 'Please login first' };
-    if (amount <= 0) return { success: false, message: language === 'bn' ? 'সঠিক পরিমাণ টাকা দিন।' : 'Enter valid amount.' };
-    if (!senderNumber.trim()) return { success: false, message: language === 'bn' ? 'প্রেরক নম্বর দিন।' : 'Enter sender number.' };
-    if (!transactionId.trim()) return { success: false, message: language === 'bn' ? 'ট্রানজেকশন আইডি (TrxID) দিন।' : 'Enter TrxID.' };
+    if (!currentUser) return resultWithToast({ success: false, message: 'Please login first' });
+    if (amount <= 0) return resultWithToast({ success: false, message: language === 'bn' ? 'সঠিক পরিমাণ টাকা দিন।' : 'Enter valid amount.' });
+    if (!senderNumber.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'প্রেরক নম্বর দিন।' : 'Enter sender number.' });
+    if (!transactionId.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'ট্রানজেকশন আইডি (TrxID) দিন।' : 'Enter TrxID.' });
 
     const newTx: Transaction = {
       id: 'tx-' + Date.now(),
@@ -590,29 +701,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncTransactionToFirebase(newTx);
     sound.playCoin();
 
-    return {
+    return resultWithToast({
       success: true,
       message: language === 'bn' ? 'ডিপোজিট রিকোয়েস্ট জমা হয়েছে! অ্যাডমিন ভেরিফাই করে অ্যাপ্রুভ করবেন।' : 'Deposit request submitted for review.',
-    };
+    });
   };
 
   // Wallet: Withdraw
   const requestWithdraw = (method: PaymentMethod, amount: number, receiverNumber: string) => {
-    if (!currentUser) return { success: false, message: 'Please login first' };
+    if (!currentUser) return resultWithToast({ success: false, message: 'Please login first' });
     if (amount < settings.minWithdrawAmount) {
-      return {
+      return resultWithToast({
         success: false,
         message: language === 'bn' ? `সর্বনিম্ন উইথড্র ৳${settings.minWithdrawAmount}!` : `Minimum withdraw is ৳${settings.minWithdrawAmount}!`,
-      };
+      });
     }
     if (currentUser.balance < amount) {
-      return {
+      return resultWithToast({
         success: false,
         message: language === 'bn' ? 'আপনার একাউন্টে পর্যাপ্ত ব্যালেন্স নেই!' : 'Insufficient balance!',
-      };
+      });
     }
     if (!receiverNumber.trim()) {
-      return { success: false, message: language === 'bn' ? 'উইথড্র পাওয়ার নম্বর দিন।' : 'Enter receiver number.' };
+      return resultWithToast({ success: false, message: language === 'bn' ? 'উইথড্র পাওয়ার নম্বর দিন।' : 'Enter receiver number.' });
     }
 
     // Deduct immediately from user balance (held in pending)
@@ -640,10 +751,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncTransactionToFirebase(newTx);
     sound.playClick();
 
-    return {
+    return resultWithToast({
       success: true,
       message: language === 'bn' ? `৳${amount} উইথড্র রিকোয়েস্ট সফল হয়েছে! খুব শীঘ্রই পেমেন্ট সম্পন্ন হবে।` : `Withdraw request for ৳${amount} placed!`,
-    };
+    });
   };
 
   // Admin Actions
@@ -660,6 +771,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               ...u,
               balance: u.balance + tx.amount,
               totalEarned: u.totalEarned + tx.amount,
+              totalDeposited: (u.totalDeposited || 0) + tx.amount,
             };
             syncUserToFirebase(updated);
             return updated;
@@ -670,7 +782,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // If current user is the recipient, update their active state
       if (currentUser?.uid === tx.userId) {
-        setCurrentUser((prev) => (prev ? { ...prev, balance: prev.balance + tx.amount, totalEarned: prev.totalEarned + tx.amount } : null));
+        setCurrentUser((prev) => (prev ? { ...prev, balance: prev.balance + tx.amount, totalEarned: prev.totalEarned + tx.amount, totalDeposited: (prev.totalDeposited || 0) + tx.amount } : null));
       }
     } else if (tx.type === 'withdraw') {
       // Mark totalWithdrawn
@@ -782,6 +894,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         settings,
         language,
         toggleLanguage,
+        toast,
+        showToast,
+        hideToast,
         login,
         register,
         logout,

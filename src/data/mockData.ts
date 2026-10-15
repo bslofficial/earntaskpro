@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   quizReward: 10,
   referBonus: 50,
   minWithdrawAmount: 100,
+  minDepositForTasks: 0,
   depositAccounts: {
     bKash: "01913932587 (Personal / Send Money)",
     Nagad: "01913932587 (Personal / Send Money)",
@@ -88,7 +89,8 @@ export const INITIAL_DEMO_USERS: User[] = [
       quizzesToday: 0,
       lastResetDate: new Date().toISOString().split('T')[0]
     },
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    totalDeposited: 1000
   },
   {
     uid: "user-demo-1",
@@ -108,7 +110,8 @@ export const INITIAL_DEMO_USERS: User[] = [
       quizzesToday: 1,
       lastResetDate: new Date().toISOString().split('T')[0]
     },
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    totalDeposited: 300
   }
 ];
 

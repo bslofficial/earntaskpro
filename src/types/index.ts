@@ -20,6 +20,7 @@ export interface User {
     lastResetDate: string; // YYYY-MM-DD
   };
   createdAt: string;
+  totalDeposited: number;
 }
 
 export type TransactionType = 'deposit' | 'withdraw';
@@ -64,6 +65,7 @@ export interface AppSettings {
   quizReward: number;
   referBonus: number;
   minWithdrawAmount: number;
+  minDepositForTasks: number;
   depositAccounts: {
     bKash: string;
     Nagad: string;

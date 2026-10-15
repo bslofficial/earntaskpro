@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, CheckSquare, Wallet, User, ShieldCheck } from 'lucide-react';
+import { Home, CheckSquare, Wallet, User, Trophy, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { sound } from '../../utils/audio';
 
@@ -21,6 +21,11 @@ export const BottomNavigation: React.FC<Props> = ({ activeTab, onSelectTab }) =>
       id: 'task',
       label: language === 'bn' ? 'টাস্ক' : 'Tasks',
       icon: CheckSquare,
+    },
+    {
+      id: 'leaderboard',
+      label: language === 'bn' ? 'লিডারবোর্ড' : 'Leaderboard',
+      icon: Trophy,
     },
     {
       id: 'wallet',

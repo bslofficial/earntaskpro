@@ -13,6 +13,7 @@ import { QuickStats } from './components/home/QuickStats';
 import { TaskListView } from './components/tasks/TaskListView';
 import { WalletView } from './components/wallet/WalletView';
 import { ProfileView } from './components/profile/ProfileView';
+import { LeaderboardView } from './components/leaderboard/LeaderboardView';
 import { AdminView } from './components/admin/AdminView';
 
 // Modals
@@ -22,9 +23,10 @@ import { LuckySpinModal } from './components/tasks/LuckySpinModal';
 import { QuizModal } from './components/tasks/QuizModal';
 import { ReferModal } from './components/tasks/ReferModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { Toast } from './components/common/Toast';
 
 const MainApp: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'task' | 'wallet' | 'profile' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'task' | 'leaderboard' | 'wallet' | 'profile' | 'admin'>('home');
 
   // Modal visibility states
   const [isCheckinOpen, setIsCheckinOpen] = useState(false);
@@ -39,12 +41,23 @@ const MainApp: React.FC = () => {
     const handleHash = () => {
       if (window.location.hash === '#admin') {
         setActiveTab('admin');
+      } else {
+        if (activeTab === 'admin') {
+          setActiveTab('home');
+        }
       }
     };
     handleHash();
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
-  }, []);
+  }, [activeTab]);
+
+  const handleNavigateTab = (tab: string) => {
+    if (tab === 'admin' && window.location.hash !== '#admin') {
+      return;
+    }
+    setActiveTab(tab as typeof activeTab);
+  };
 
   const handleSelectBannerTask = (taskKey: string) => {
     if (taskKey === 'spin') setIsSpinOpen(true);
@@ -58,7 +71,7 @@ const MainApp: React.FC = () => {
       {/* Top Navbar */}
       <Navbar
         onOpenAuth={() => setIsAuthOpen(true)}
-        onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
+        onNavigateTab={handleNavigateTab}
         activeTab={activeTab}
       />
 
@@ -75,7 +88,7 @@ const MainApp: React.FC = () => {
 
             {/* Quick Metrics & Balance */}
             <QuickStats
-              onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
+              onNavigateTab={handleNavigateTab}
               onOpenCheckin={() => setIsCheckinOpen(true)}
             />
 
@@ -103,20 +116,23 @@ const MainApp: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: WALLET */}
+        {/* TAB 3: LEADERBOARD */}
+        {activeTab === 'leaderboard' && <LeaderboardView />}
+
+        {/* TAB 4: WALLET */}
         {activeTab === 'wallet' && <WalletView />}
 
-        {/* TAB 4: PROFILE */}
+        {/* TAB 5: PROFILE */}
         {activeTab === 'profile' && (
           <ProfileView
             onOpenRefer={() => setIsReferOpen(true)}
             onOpenAuth={() => setIsAuthOpen(true)}
-            onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
+            onNavigateTab={handleNavigateTab}
           />
         )}
 
-        {/* TAB 5: ADMIN */}
-        {activeTab === 'admin' && <AdminView />}
+        {/* TAB 6: ADMIN */}
+        {activeTab === 'admin' && window.location.hash === '#admin' && <AdminView />}
       </main>
 
       {/* Fixed Bottom Navigation */}
@@ -155,6 +171,8 @@ const MainApp: React.FC = () => {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
       />
+
+      <Toast />
     </div>
   );
 };

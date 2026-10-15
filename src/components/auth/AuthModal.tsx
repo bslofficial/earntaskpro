@@ -157,17 +157,17 @@ export const AuthModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1">
-              {language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর' : 'Email or Phone Number'}
+              {language === 'bn' ? 'ইমেইল অ্যাড্রেস (Email Address)' : 'Email Address'}
             </label>
             <div className="relative">
-              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
-                type="text"
+                type="email"
                 required
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
-                placeholder="01XXXXXXXXX"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs sm:text-sm focus:border-amber-400 focus:outline-none font-mono"
+                placeholder="example@gmail.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs sm:text-sm focus:border-amber-400 focus:outline-none"
               />
             </div>
           </div>
