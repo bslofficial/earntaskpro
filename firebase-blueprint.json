@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and balance information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "balance": { "type": "number" },
+        "referCode": { "type": "string" },
+        "referredBy": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "lastCheckIn": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "balance", "role"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Deposit and withdrawal requests.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdraw"] },
+        "amount": { "type": "number" },
+        "method": { "type": "string", "enum": ["Bkash", "Nagad", "Rocket"] },
+        "transactionId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "type", "amount", "method", "status", "timestamp"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Completed tasks by users.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string", "enum": ["video", "spin", "quiz"] },
+        "reward": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "type", "reward", "timestamp"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global application settings managed by admin.",
+      "type": "object",
+      "properties": {
+        "notice": { "type": "string" },
+        "videoReward": { "type": "number" },
+        "spinReward": { "type": "number" },
+        "quizReward": { "type": "number" },
+        "minWithdraw": { "type": "number" },
+        "depositNumbers": {
+          "type": "object",
+          "properties": {
+            "Bkash": { "type": "string" },
+            "Nagad": { "type": "string" },
+            "Rocket": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Deposit and withdrawal requests."
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Task completion logs."
+    },
+    "/settings/global": {
+      "schema": "AppSettings",
+      "description": "Global app configuration."
+    }
+  }
+}
