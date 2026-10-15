@@ -115,12 +115,13 @@ export const AdminView: React.FC = () => {
 
   const filteredUsers = allUsers.filter(
     (u) =>
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.emailOrPhone.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.referCode.toLowerCase().includes(userSearch.toLowerCase())
+      Boolean(u) &&
+      (((u.name || '').toLowerCase().includes(userSearch.toLowerCase())) ||
+       ((u.emailOrPhone || '').toLowerCase().includes(userSearch.toLowerCase())) ||
+       ((u.referCode || '').toLowerCase().includes(userSearch.toLowerCase())))
   );
 
-  const totalSystemBalance = allUsers.reduce((sum, u) => sum + (u.balance || 0), 0);
+  const totalSystemBalance = allUsers.reduce((sum, u) => sum + (u?.balance || 0), 0);
 
   return (
     <div className="w-full space-y-5 animate-in fade-in duration-200">
@@ -325,9 +326,9 @@ export const AdminView: React.FC = () => {
           </div>
 
           <div className="space-y-2 max-h-[450px] overflow-y-auto pr-1">
-            {filteredUsers.map((u) => (
+            {filteredUsers.map((u, idx) => (
               <div
-                key={u.uid}
+                key={u.uid || `admin-user-${idx}`}
                 className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
               >
                 <div>

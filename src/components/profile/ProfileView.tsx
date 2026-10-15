@@ -19,10 +19,11 @@ import { sound } from '../../utils/audio';
 interface Props {
   onOpenRefer: () => void;
   onOpenAuth: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
-export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth }) => {
-  const { currentUser, taskLogs, logout, allUsers, language, login } = useApp();
+export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth, onNavigateTab }) => {
+  const { currentUser, taskLogs, logout, language } = useApp();
   const [copied, setCopied] = useState(false);
 
   if (!currentUser) {
@@ -85,14 +86,26 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth }) => {
             </div>
           </div>
 
-          {/* Logout button */}
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-400 border border-zinc-800 text-xs font-semibold transition cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>{language === 'bn' ? 'লগআউট' : 'Logout'}</span>
-          </button>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {currentUser.role === 'admin' && onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('admin')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition cursor-pointer"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>{language === 'bn' ? 'অ্যাডমিন প্যানেল' : 'Admin Panel'}</span>
+              </button>
+            )}
+
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-400 border border-zinc-800 text-xs font-semibold transition cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{language === 'bn' ? 'লগআউট' : 'Logout'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Refer Code Bar */}
@@ -129,31 +142,6 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth }) => {
         </div>
       </div>
 
-      {/* Quick Demo Switcher (helps during review/testing) */}
-      <div className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/80">
-        <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
-          <span>{language === 'bn' ? 'দ্রুত একাউন্ট পরিবর্তন করুন (Demo Switch):' : 'Quick Demo Switch:'}</span>
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {allUsers.map((u) => (
-            <button
-              key={u.uid}
-              onClick={() => {
-                login(u.emailOrPhone, u.password || 'admin123');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                currentUser.uid === u.uid
-                  ? 'bg-amber-500 text-black shadow'
-                  : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
-              }`}
-            >
-              <span>{u.name}</span>
-              <span className="text-[10px] opacity-75">({u.role})</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Recent Earning Activities */}
       <div className="rounded-3xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-3">
         <h4 className="text-base font-bold text-white flex items-center gap-2">
@@ -167,9 +155,9 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth }) => {
           </p>
         ) : (
           <div className="space-y-2">
-            {userLogs.map((log) => (
+            {userLogs.map((log, idx) => (
               <div
-                key={log.id}
+                key={log.id || `log-${idx}-${log.timestamp || idx}`}
                 className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-between text-xs"
               >
                 <div>

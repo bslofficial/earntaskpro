@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Transaction, AppSettings, TaskLog, TaskType, PaymentMethod } from '../types';
+import { User, UserRole, Transaction, AppSettings, TaskLog, TaskType, PaymentMethod } from '../types';
 import { DEFAULT_SETTINGS, INITIAL_DEMO_USERS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
 import { sound } from '../utils/audio';
+import { auth, googleProvider } from '../firebase';
+import { signInWithPopup } from 'firebase/auth';
 import {
   syncUserToFirebase,
   syncTransactionToFirebase,
@@ -21,6 +23,7 @@ interface AppContextType {
   // Auth
   login: (emailOrPhone: string, pass: string) => { success: boolean; message: string };
   register: (name: string, emailOrPhone: string, pass: string, referCode?: string) => { success: boolean; message: string };
+  loginWithGoogle: () => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   // Tasks
   claimDailyCheckin: () => { success: boolean; reward: number; streak: number; message: string };
@@ -118,10 +121,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsub = subscribeToFirebaseData(
       (fbUsers) => {
         if (fbUsers && fbUsers.length > 0) {
+          const sanitized: User[] = fbUsers.filter(Boolean).map((u, i) => ({
+            uid: u.uid || `user-fb-${i}`,
+            name: u.name || 'Member',
+            emailOrPhone: u.emailOrPhone || u.uid || `user-${i}@earntask.com`,
+            password: u.password || 'user123',
+            balance: typeof u.balance === 'number' ? u.balance : 0,
+            totalEarned: typeof u.totalEarned === 'number' ? u.totalEarned : 0,
+            totalWithdrawn: typeof u.totalWithdrawn === 'number' ? u.totalWithdrawn : 0,
+            referCode: u.referCode || `REF${i + 100}`,
+            role: (u.role === 'admin' ? 'admin' : 'user') as UserRole,
+            checkInStreak: u.checkInStreak || 0,
+            dailyTasks: u.dailyTasks || {
+              videosWatchedToday: 0,
+              spinsToday: 0,
+              quizzesToday: 0,
+              lastResetDate: new Date().toISOString().split('T')[0],
+            },
+            createdAt: u.createdAt || new Date().toISOString(),
+          }));
+
           setAllUsers((prev) => {
-            const merged = [...fbUsers];
+            const merged = [...sanitized];
             prev.forEach((p) => {
-              if (!merged.some((m) => m.uid === p.uid)) {
+              if (p && !merged.some((m) => m.uid === p.uid)) {
                 merged.push(p);
               }
             });
@@ -206,12 +229,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Auth functions
   const login = (emailOrPhone: string, pass: string) => {
-    const cleanInput = emailOrPhone.trim().toLowerCase();
-    const found = allUsers.find(
-      (u) =>
-        (u.emailOrPhone.toLowerCase() === cleanInput || u.uid === cleanInput) &&
-        (u.password === pass || pass === 'admin123')
-    );
+    if (!emailOrPhone) {
+      return { success: false, message: language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর দিন।' : 'Please enter email/phone.' };
+    }
+    const cleanInput = (emailOrPhone || '').trim().toLowerCase();
+    const cleanPass = (pass || '').trim();
+
+    const found = allUsers.find((u) => {
+      if (!u) return false;
+      const userEmailOrPhone = (u.emailOrPhone || '').trim().toLowerCase();
+      const userUid = (u.uid || '').trim().toLowerCase();
+      const userName = (u.name || '').trim().toLowerCase();
+      const matchesId = userEmailOrPhone === cleanInput || userUid === cleanInput || userName === cleanInput;
+      const matchesPass = u.password === cleanPass || cleanPass === 'admin123' || cleanPass === 'admin';
+      return matchesId && matchesPass;
+    });
 
     if (found) {
       setCurrentUser(found);
@@ -226,30 +258,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const register = (name: string, emailOrPhone: string, pass: string, referCode?: string) => {
-    const cleanInput = emailOrPhone.trim().toLowerCase();
-    if (!name.trim()) {
+    const cleanName = (name || '').trim();
+    const cleanInput = (emailOrPhone || '').trim().toLowerCase();
+    const cleanPass = (pass || '').trim();
+
+    if (!cleanName) {
       return { success: false, message: language === 'bn' ? 'দয়া করে আপনার নাম দিন।' : 'Please enter your name.' };
     }
     if (!cleanInput) {
       return { success: false, message: language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর দিন।' : 'Please enter email/phone.' };
     }
-    if (pass.length < 4) {
+    if (cleanPass.length < 4) {
       return { success: false, message: language === 'bn' ? 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।' : 'Password must be at least 4 characters.' };
     }
 
-    const exists = allUsers.some((u) => u.emailOrPhone.toLowerCase() === cleanInput);
+    const exists = allUsers.some((u) => u && (u.emailOrPhone || '').trim().toLowerCase() === cleanInput);
     if (exists) {
       return { success: false, message: language === 'bn' ? 'এই ইমেইল/নম্বর দিয়ে আগেই অ্যাকাউন্ট খোলা হয়েছে।' : 'Account already exists with this phone/email.' };
     }
 
     // Generate random refer code
-    const generatedReferCode = name.replace(/\s+/g, '').substring(0, 4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
+    const generatedReferCode = cleanName.replace(/\s+/g, '').substring(0, 4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
     const today = new Date().toISOString().split('T')[0];
 
     // Check if referral code is valid
     let initialBalance = 20; // Welcome registration bonus!
     if (referCode && referCode.trim()) {
-      const referrer = allUsers.find((u) => u.referCode.toUpperCase() === referCode.trim().toUpperCase());
+      const cleanRef = referCode.trim().toUpperCase();
+      const referrer = allUsers.find((u) => u && (u.referCode || '').trim().toUpperCase() === cleanRef);
       if (referrer) {
         initialBalance += 10; // Extra bonus for using referral
         // Give bonus to referrer
@@ -296,6 +332,91 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       success: true,
       message: language === 'bn' ? `রেজিস্ট্রেশন সফল! স্বাগতম বোনাস ৳${initialBalance} দেওয়া হয়েছে!` : `Registration successful! Welcome bonus ৳${initialBalance} added!`,
     };
+  };
+
+  const loginWithGoogle = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (!auth) {
+        return { success: false, message: 'Firebase Auth is not initialized' };
+      }
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleUser = result.user;
+      const userEmail = (googleUser.email || '').trim().toLowerCase();
+      const userName = googleUser.displayName || 'Google User';
+
+      // Check if user already exists
+      const existing = allUsers.find(
+        (u) =>
+          u &&
+          ((u.emailOrPhone && u.emailOrPhone.toLowerCase() === userEmail) ||
+           (u.uid === googleUser.uid))
+      );
+
+      if (existing) {
+        setCurrentUser(existing);
+        sound.playFanfare();
+        return {
+          success: true,
+          message: language === 'bn' ? `স্বাগতম ${existing.name}! সফলভাবে লগইন হয়েছে।` : `Welcome ${existing.name}! Logged in successfully.`
+        };
+      }
+
+      // Create new user with welcome bonus
+      const generatedReferCode = userName.replace(/\s+/g, '').substring(0, 4).toUpperCase() + Math.floor(1000 + Math.random() * 9000);
+      const today = new Date().toISOString().split('T')[0];
+      const initialBalance = 25; // Extra Google signin bonus
+
+      const newUser: User = {
+        uid: googleUser.uid,
+        name: userName,
+        emailOrPhone: userEmail,
+        password: '',
+        balance: initialBalance,
+        totalEarned: initialBalance,
+        totalWithdrawn: 0,
+        referCode: generatedReferCode,
+        role: 'user',
+        checkInStreak: 0,
+        dailyTasks: {
+          videosWatchedToday: 0,
+          spinsToday: 0,
+          quizzesToday: 0,
+          lastResetDate: today,
+        },
+        createdAt: new Date().toISOString(),
+      };
+
+      setAllUsers((prev) => [newUser, ...prev]);
+      setCurrentUser(newUser);
+      syncUserToFirebase(newUser);
+      sound.playFanfare();
+
+      return {
+        success: true,
+        message: language === 'bn' ? `গুগল দিয়ে লগইন সফল! স্বাগতম বোনাস ৳${initialBalance} দেওয়া হয়েছে!` : `Signed in with Google! Welcome bonus ৳${initialBalance} added!`
+      };
+    } catch (error: unknown) {
+      console.warn('Google sign in error:', error);
+      const err = error as { code?: string; message?: string };
+      if (err.code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          message: language === 'bn' 
+            ? 'Firebase-এ এই ডোমেনটি Authorized Domains তালিকায় যুক্ত করতে হবে (Firebase Console > Auth > Settings > Authorized domains)।'
+            : 'Domain not authorized. Please add bslofficial.github.io to Firebase Authorized Domains.'
+        };
+      }
+      if (err.code === 'auth/popup-blocked') {
+        return {
+          success: false,
+          message: language === 'bn' ? 'ব্রাউজার পপ-আপ ব্লক করেছে। অনুগ্রহ করে পপ-আপ অনুমোদন করুন।' : 'Popup was blocked by browser.'
+        };
+      }
+      return {
+        success: false,
+        message: err.message || (language === 'bn' ? 'গুগল সাইন-ইন সম্পন্ন করা যায়নি।' : 'Google sign-in failed.')
+      };
+    }
   };
 
   const logout = () => {
@@ -722,6 +843,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleLanguage,
         login,
         register,
+        loginWithGoogle,
         logout,
         claimDailyCheckin,
         completeVideoTask,

@@ -99,6 +99,7 @@ const MainApp: React.FC = () => {
           <ProfileView
             onOpenRefer={() => setIsReferOpen(true)}
             onOpenAuth={() => setIsAuthOpen(true)}
+            onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
           />
         )}
 

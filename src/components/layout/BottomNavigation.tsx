@@ -32,11 +32,6 @@ export const BottomNavigation: React.FC<Props> = ({ activeTab, onSelectTab }) =>
       label: language === 'bn' ? 'প্রোফাইল' : 'Profile',
       icon: User,
     },
-    {
-      id: 'admin',
-      label: language === 'bn' ? 'অ্যাডমিন' : 'Admin',
-      icon: ShieldCheck,
-    },
   ];
 
   const handleSelect = (id: string) => {

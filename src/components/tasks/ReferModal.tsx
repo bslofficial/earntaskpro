@@ -156,8 +156,8 @@ export const ReferModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
           {referredUsers.length > 0 ? (
             <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1">
-              {referredUsers.map((u) => (
-                <div key={u.uid} className="flex items-center justify-between p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
+              {referredUsers.map((u, idx) => (
+                <div key={u.uid || `ref-${idx}`} className="flex items-center justify-between p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-violet-600/30 text-violet-300 flex items-center justify-center font-bold text-[10px]">
                       {u.name.substring(0, 1)}
