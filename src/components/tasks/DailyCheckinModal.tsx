@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Calendar, Gift, CheckCircle2, Sparkles, X, Flame } from 'lucide-react';
+import { Calendar, Gift, CheckCircle2, Sparkles, X, Flame, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface Props {
@@ -11,12 +11,46 @@ interface Props {
 export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { currentUser, settings, claimDailyCheckin, language } = useApp();
   const [feedback, setFeedback] = useState<{ success: boolean; msg: string; reward?: number } | null>(null);
-
-  if (!isOpen || !currentUser) return null;
+  const [timeLeft, setTimeLeft] = useState<string>('');
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const alreadyClaimed = currentUser.lastCheckInDate === todayStr;
-  const currentStreak = currentUser.checkInStreak || 0;
+  const alreadyClaimed = currentUser?.lastCheckInDate === todayStr;
+  const currentStreak = currentUser?.checkInStreak || 0;
+
+  // রাত ১২:০০ টা (মিডনাইট) পর্যন্ত কত সময় বাকি তা হিসাব করার টাইমার
+  useEffect(() => {
+    if (!alreadyClaimed) return;
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0); // রাত ১২:০০ টা
+
+      const diff = nextMidnight.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeLeft('00:00:00');
+        return;
+      }
+
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      const formatted = `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      setTimeLeft(formatted);
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(timer);
+  }, [alreadyClaimed]);
+
+  if (!isOpen || !currentUser) return null;
 
   // 7-day schedule with progressive rewards
   const days = [
@@ -31,7 +65,7 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const handleClaim = () => {
     if (alreadyClaimed) return;
-    
+
     const res = claimDailyCheckin();
     setFeedback({
       success: res.success,
@@ -95,7 +129,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
         {/* 7-Day Grid */}
         <div className="grid grid-cols-4 gap-2.5 mb-6">
           {days.map((item) => {
-            // সঠিক স্ট্রিক ট্র্যাকিং লজিক
             const isCompleted = currentStreak >= item.day || (alreadyClaimed && currentStreak >= item.day);
             const isCurrent = !alreadyClaimed && (currentStreak + 1 === item.day || (currentStreak === 0 && item.day === 1));
             const isMega = item.day === 7;
@@ -145,20 +178,24 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* Claim Button */}
+        {/* Action / Countdown Button */}
         <button
           onClick={handleClaim}
           disabled={alreadyClaimed}
           className={`w-full py-3.5 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 cursor-pointer ${
             alreadyClaimed
-              ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
+              ? 'bg-zinc-800 text-zinc-400 border border-zinc-700/60 cursor-not-allowed'
               : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black shadow-amber-500/25 hover:opacity-95 active:scale-95'
           }`}
         >
           {alreadyClaimed ? (
             <>
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span>{language === 'bn' ? 'আজকের বোনাস নেওয়া শেষ' : 'Claimed For Today'}</span>
+              <Clock className="w-5 h-5 text-amber-400 animate-spin" />
+              <span>
+                {language === 'bn'
+                  ? `পরবর্তী আনলক: ${timeLeft || '00:00:00'}`
+                  : `Next Unlock in ${timeLeft || '00:00:00'}`}
+              </span>
             </>
           ) : (
             <>
@@ -171,7 +208,7 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
         {alreadyClaimed && (
           <p className="text-center text-xs text-zinc-500 mt-3 font-mono">
             {language === 'bn'
-              ? 'পরবর্তী চেক-ইন আনলক হবে রাত ১২:০০ টায়'
+              ? 'পরবর্তী চেক-ইন রাত ১২:০০ টায় আনলক হবে'
               : 'Next check-in unlocks at 00:00 midnight'}
           </p>
         )}
