@@ -140,7 +140,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             referCode: u.referCode || `REF${i + 100}`,
             role: (u.role === 'admin' ? 'admin' : 'user') as UserRole,
             checkInStreak: typeof u.checkInStreak === 'number' ? u.checkInStreak : 0,
-            lastCheckInDate: u.lastCheckInDate || '',
+            lastCheckInDate: u.lastCheckInDate || '', // 👈 ফায়ারস্টোর থেকে রিড করা
             dailyTasks: u.dailyTasks || {
               videosWatchedToday: 0,
               spinsToday: 0,
@@ -343,6 +343,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       referredBy: referCode ? referCode.trim().toUpperCase() : undefined,
       role: cleanInput === 'admin@earntask.com' ? 'admin' : 'user',
       checkInStreak: 0,
+      lastCheckInDate: '',
       dailyTasks: {
         videosWatchedToday: 0,
         spinsToday: 0,
@@ -401,7 +402,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...currentUser,
       balance: currentUser.balance + reward,
       totalEarned: currentUser.totalEarned + reward,
-      lastCheckInDate: today,
+      lastCheckInDate: today, // 👈 নিশ্চিতভাবে ফায়ারস্টোরে 'lastCheckInDate' সেভ হবে
       checkInStreak: newStreak,
     };
 
