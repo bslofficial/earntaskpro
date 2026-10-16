@@ -17,14 +17,14 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const alreadyClaimed = currentUser?.lastCheckInDate === todayStr;
   const currentStreak = currentUser?.checkInStreak || 0;
 
-  // রাত ১২:০০ টা (মিডনাইট) পর্যন্ত কত সময় বাকি তা হিসাব করার টাইমার
+  // মিডনাইট কাউন্টডাউন টাইমার
   useEffect(() => {
     if (!alreadyClaimed) return;
 
     const updateCountdown = () => {
       const now = new Date();
       const nextMidnight = new Date();
-      nextMidnight.setHours(24, 0, 0, 0); // রাত ১২:০০ টা
+      nextMidnight.setHours(24, 0, 0, 0);
 
       const diff = nextMidnight.getTime() - now.getTime();
 
@@ -52,7 +52,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   if (!isOpen || !currentUser) return null;
 
-  // 7-day schedule with progressive rewards
   const days = [
     { day: 1, reward: settings.dailyCheckinReward, label: language === 'bn' ? '১ম দিন' : 'Day 1' },
     { day: 2, reward: settings.dailyCheckinReward, label: language === 'bn' ? '২য় দিন' : 'Day 2' },
@@ -86,11 +85,9 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-b from-zinc-900 via-zinc-900 to-black p-6 shadow-2xl shadow-amber-500/10">
-        {/* Glow ambient header */}
         <div className="absolute -top-16 -left-16 w-44 h-44 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -top-16 -right-16 w-44 h-44 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition cursor-pointer"
@@ -98,7 +95,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Title */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-black shadow-lg shadow-amber-500/30 mb-3">
             <Calendar className="w-7 h-7" />
@@ -115,7 +111,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
               : 'Log in daily to claim your rewards and build your streak'}
           </p>
 
-          {/* Streak indicator */}
           <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
             <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
             <span>
@@ -126,10 +121,9 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 7-Day Grid */}
         <div className="grid grid-cols-4 gap-2.5 mb-6">
           {days.map((item) => {
-            const isCompleted = currentStreak >= item.day || (alreadyClaimed && currentStreak >= item.day);
+            const isCompleted = currentStreak >= item.day;
             const isCurrent = !alreadyClaimed && (currentStreak + 1 === item.day || (currentStreak === 0 && item.day === 1));
             const isMega = item.day === 7;
 
@@ -165,7 +159,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
           })}
         </div>
 
-        {/* Feedback message */}
         {feedback && (
           <div
             className={`p-3 rounded-xl mb-4 text-center text-sm font-medium ${
@@ -182,10 +175,10 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
         <button
           onClick={handleClaim}
           disabled={alreadyClaimed}
-          className={`w-full py-3.5 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 cursor-pointer ${
+          className={`w-full py-3.5 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 ${
             alreadyClaimed
-              ? 'bg-zinc-800 text-zinc-400 border border-zinc-700/60 cursor-not-allowed'
-              : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black shadow-amber-500/25 hover:opacity-95 active:scale-95'
+              ? 'bg-zinc-800/90 text-amber-400/90 border border-amber-500/30 cursor-not-allowed opacity-90'
+              : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black shadow-amber-500/25 hover:opacity-95 active:scale-95 cursor-pointer'
           }`}
         >
           {alreadyClaimed ? (
