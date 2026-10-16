@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Calendar, Tv, Disc3, HelpCircle, Users, ChevronRight, CheckCircle2, Sparkles, LayoutGrid, Layers } from 'lucide-react';
+import { Calendar, Tv, Disc3, HelpCircle, Users, ChevronRight, CheckCircle2, Sparkles, LayoutGrid } from 'lucide-react';
 
 interface Props {
   onOpenCheckin: () => void;
@@ -32,6 +32,9 @@ export const TaskListView: React.FC<Props> = ({
   const quizzesDone = currentUser?.dailyTasks?.quizzesToday || 0;
   const maxQuizzes = settings.maxDailyQuizzes || 5;
 
+  // ডিপোজিট চেক (ডেইলি চেক-ইন বাদে অন্য টাস্কগুলোর জন্য)
+  const hasDeposited = currentUser && (currentUser.role === 'admin' || (currentUser.totalDeposited || 0) >= (settings.minDepositForTasks || 300));
+
   const tasks = [
     {
       id: 'checkin',
@@ -48,7 +51,7 @@ export const TaskListView: React.FC<Props> = ({
       progressText: isCheckinDone ? '1 / 1' : '0 / 1',
       progressPercent: isCheckinDone ? 100 : 0,
       badge: currentUser?.checkInStreak ? `${currentUser.checkInStreak} ${language === 'bn' ? 'দিন স্ট্রিক' : 'd streak'}` : null,
-      onClick: onOpenCheckin,
+      onClick: onOpenCheckin, // ডেইলি চেক-ইন সবসময় খোলা থাকবে
     },
     {
       id: 'video',
@@ -65,7 +68,13 @@ export const TaskListView: React.FC<Props> = ({
       progressText: `${videosWatched} / ${maxVideos}`,
       progressPercent: Math.min(100, Math.round((videosWatched / maxVideos) * 100)),
       badge: `${maxVideos - videosWatched} ${language === 'bn' ? 'বাকি' : 'left'}`,
-      onClick: onOpenVideo,
+      onClick: () => {
+        if (!hasDeposited) {
+          alert(language === 'bn' ? 'এই টাস্কটি করতে হলে আগে ডিপোজিট করতে হবে।' : 'Please deposit first to unlock this task.');
+          return;
+        }
+        onOpenVideo();
+      },
     },
     {
       id: 'spin',
@@ -82,7 +91,13 @@ export const TaskListView: React.FC<Props> = ({
       progressText: `${spinsDone} / ${maxSpins}`,
       progressPercent: Math.min(100, Math.round((spinsDone / maxSpins) * 100)),
       badge: `${maxSpins - spinsDone} ${language === 'bn' ? 'বাকি' : 'left'}`,
-      onClick: onOpenSpin,
+      onClick: () => {
+        if (!hasDeposited) {
+          alert(language === 'bn' ? 'এই টাস্কটি করতে হলে আগে ডিপোজিট করতে হবে।' : 'Please deposit first to unlock this task.');
+          return;
+        }
+        onOpenSpin();
+      },
     },
     {
       id: 'quiz',
@@ -99,7 +114,13 @@ export const TaskListView: React.FC<Props> = ({
       progressText: `${quizzesDone} / ${maxQuizzes}`,
       progressPercent: Math.min(100, Math.round((quizzesDone / maxQuizzes) * 100)),
       badge: `${maxQuizzes - quizzesDone} ${language === 'bn' ? 'বাকি' : 'left'}`,
-      onClick: onOpenQuiz,
+      onClick: () => {
+        if (!hasDeposited) {
+          alert(language === 'bn' ? 'এই টাস্কটি করতে হলে আগে ডিপোজিট করতে হবে।' : 'Please deposit first to unlock this task.');
+          return;
+        }
+        onOpenQuiz();
+      },
     },
     {
       id: 'refer',
@@ -168,18 +189,18 @@ export const TaskListView: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Deposit Requirement Notice Banner */}
+      {/* Deposit Requirement Notice Banner (অন্যান্য টাস্কের জন্য প্রযোজ্য) */}
       {currentUser && currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < (settings.minDepositForTasks || 300) && (
         <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between gap-3 text-amber-300 text-xs sm:text-sm">
           <div>
             <p className="font-bold flex items-center gap-1.5">
               <span>⚠️</span>
-              <span>{language === 'bn' ? 'টাস্ক আনলক করতে ডিপোজিট প্রয়োজন' : 'Deposit Required to Unlock Tasks'}</span>
+              <span>{language === 'bn' ? 'অন্যান্য টাস্ক আনলক করতে ডিপোজিট প্রয়োজন' : 'Deposit Required for Other Tasks'}</span>
             </p>
             <p className="text-zinc-300 text-[11px] mt-0.5">
               {language === 'bn'
-                ? `কাজ করার জন্য কমপক্ষে ৳${settings.minDepositForTasks || 300} ডিপোজিট করতে হবে। আপনার ডিপোজিট: ৳${currentUser.totalDeposited || 0}`
-                : `Minimum ৳${settings.minDepositForTasks || 300} deposit required. Your deposit: ৳${currentUser.totalDeposited || 0}`}
+                ? `ডেইলি চেক-ইন ফ্রিতে করতে পারবেন। তবে অন্যান্য কাজ করতে কমপক্ষে ৳${settings.minDepositForTasks || 300} ডিপোজিট করতে হবে।`
+                : `Daily check-in is free. Minimum ৳${settings.minDepositForTasks || 300} deposit required for other tasks.`}
             </p>
           </div>
           <button
