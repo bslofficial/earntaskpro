@@ -126,7 +126,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return res;
   };
 
-  // Subscribe to Firebase Realtime Database on mount
+  // Subscribe to Firebase Firestore on mount
   useEffect(() => {
     const unsub = subscribeToFirebaseData(
       (fbUsers) => {
@@ -136,13 +136,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             name: u.name || 'Member',
             emailOrPhone: u.emailOrPhone || u.uid || `user-${i}@earntask.com`,
             password: u.password || 'user123',
-            balance: typeof u.balance === 'number' ? u.balance : 0,
-            totalEarned: typeof u.totalEarned === 'number' ? u.totalEarned : 0,
+            balance: typeof u.balance === 'number' ? u.balance : 20,
+            totalEarned: typeof u.totalEarned === 'number' ? u.totalEarned : 20,
             totalWithdrawn: typeof u.totalWithdrawn === 'number' ? u.totalWithdrawn : 0,
             totalDeposited: typeof u.totalDeposited === 'number' ? u.totalDeposited : (u.role === 'admin' ? 1000 : 0),
             referCode: u.referCode || `REF${i + 100}`,
             role: (u.role === 'admin' ? 'admin' : 'user') as UserRole,
-            checkInStreak: u.checkInStreak || 0,
+            checkInStreak: typeof u.checkInStreak === 'number' ? u.checkInStreak : 0,
             lastCheckInDate: u.lastCheckInDate || '',
             dailyTasks: u.dailyTasks || {
               videosWatchedToday: 0,
@@ -155,11 +155,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
           setAllUsers(sanitized);
 
-          // Update current user live data if logged in
+          // Realtime syncing for active user
           setCurrentUser((prev) => {
             if (!prev) return null;
-            const latest = sanitized.find((u) => u.uid === prev.uid);
-            return latest ? { ...prev, ...latest } : prev;
+            const latest = sanitized.find((u) => u.uid === prev.uid || (u.emailOrPhone && prev.emailOrPhone && u.emailOrPhone.toLowerCase() === prev.emailOrPhone.toLowerCase()));
+            return latest ? { ...latest } : prev;
           });
         }
       },
@@ -177,7 +177,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => unsub();
   }, []);
 
-  // Sync to localStorage and Firebase
+  // Sync state to LocalStorage and Firebase
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     syncSettingsToFirebase(settings);
@@ -408,7 +408,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
-    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
+    syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -467,7 +467,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
-    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
+    syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -526,7 +526,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
-    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
+    syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -586,7 +586,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
-    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
+    syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
