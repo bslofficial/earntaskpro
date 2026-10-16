@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, Transaction, AppSettings, TaskLog, TaskType, PaymentMethod } from '../types';
-import { DEFAULT_SETTINGS, INITIAL_DEMO_USERS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
+import { DEFAULT_SETTINGS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
 import { sound } from '../utils/audio';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
@@ -48,7 +48,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'earntask_current_user_v1',
-  USERS: 'earntask_users_v1',
   TRANSACTIONS: 'earntask_transactions_v1',
   LOGS: 'earntask_task_logs_v1',
   SETTINGS: 'earntask_settings_v2',
@@ -56,13 +55,11 @@ const STORAGE_KEYS = {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Load initial states from localStorage with mock fallbacks
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS) || localStorage.getItem('earntask_settings_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure new payment numbers are applied if old placeholders were present
         if (!parsed.depositAccounts || parsed.depositAccounts.bKash.includes('01812') || !parsed.depositAccounts.bKash.includes('01913932587')) {
           parsed.depositAccounts = DEFAULT_SETTINGS.depositAccounts;
         }
@@ -80,71 +77,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  const generate150Users = (): User[] => {
-    const firstNames = ["রিফাত", "নাজমুল", "তানভীর", "সাকিব", "রাকিব", "শরিফুল", "ইমরান", "ফারহান", "সোহাগ", "জনি", "পার্থ", "শাকিল", "মামুন", "সাগর", "হাসান", "হৃদয়", "আকাশ", "শান্ত", "শুভ", "নাহিদ", "ফাহিম", "সিয়াম", "রাফি", "জয়", "তুষার", "আরিফ", "সাদিয়া", "নাজনীন", "তানিয়া", "মীম", "সুরাইয়া", "ফাতেমা", "আয়েশা", "নুসরাত", "সাবিহা"];
-    const lastNames = ["ইসলাম", "হোসেন", "আহমেদ", "চৌধুরী", "খান", "মোল্লা", "তালুকদার", "সরকার", "মিয়া", "বিশ্বাস", "মন্ডল", "প্রামাণিক"];
-    const prefixes = ["017", "018", "019", "016", "013", "014"];
+  // ডামি ইউজার বাদ দিয়ে রিয়েল ইউজারদের জন্য খালি অ্যারে সেট করা হয়েছে
+  const [allUsers, setAllUsers] = useState<User[]>([]);
 
-    const users: User[] = [
-      {
-        uid: "admin-master",
-        name: "Admin Boss",
-        emailOrPhone: "admin@earntask.com",
-        password: "admin",
-        balance: 5000,
-        totalEarned: 125000,
-        totalWithdrawn: 75000,
-        referCode: "ADMIN777",
-        role: "admin",
-        checkInStreak: 45,
-        dailyTasks: { videosWatchedToday: 0, spinsToday: 0, quizzesToday: 0, lastResetDate: new Date().toISOString().split('T')[0] },
-        createdAt: new Date().toISOString(),
-        totalDeposited: 5000
-      }
-    ];
-
-    for (let i = 1; i < 150; i++) {
-      const fn = firstNames[i % firstNames.length];
-      const ln = lastNames[(i * 3) % lastNames.length];
-      const phone = `${prefixes[i % prefixes.length]}${Math.floor(10000000 + (i * 123456) % 90000000)}`;
-      const totalEarned = Math.floor(45000 - (i * 285) + 500);
-      const balance = Math.floor(totalEarned * 0.2);
-      const totalWithdrawn = Math.floor(totalEarned * 0.7);
-      users.push({
-        uid: `demo-user-${i}`,
-        name: `${fn} ${ln}`,
-        emailOrPhone: phone,
-        password: "user123",
-        balance: Math.max(10, balance),
-        totalEarned: Math.max(50, totalEarned),
-        totalWithdrawn: Math.max(0, totalWithdrawn),
-        referCode: `REF${1000 + i}`,
-        role: "user",
-        checkInStreak: (i % 25) + 1,
-        dailyTasks: { videosWatchedToday: 2, spinsToday: 2, quizzesToday: 1, lastResetDate: new Date().toISOString().split('T')[0] },
-        createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-        totalDeposited: 300
-      });
-    }
-    return users.sort((a, b) => b.totalEarned - a.totalEarned);
-  };
-
-  const [allUsers, setAllUsers] = useState<User[]>(() => {
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 150) {
-          return parsed;
-        }
-      }
-      return generate150Users();
+      const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      return saved ? JSON.parse(saved) : null;
     } catch {
-      return generate150Users();
+      return null;
     }
   });
-
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
@@ -210,15 +153,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             createdAt: u.createdAt || new Date().toISOString(),
           }));
 
-          setAllUsers((prev) => {
-            const merged = [...sanitized];
-            prev.forEach((p) => {
-              if (p && !merged.some((m) => m.uid === p.uid)) {
-                merged.push(p);
-              }
-            });
-            return merged;
-          });
+          setAllUsers(sanitized);
         }
       },
       (fbTx) => {
@@ -242,14 +177,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(allUsers));
-  }, [allUsers]);
-
-  useEffect(() => {
     if (currentUser) {
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
-      // Also update in allUsers list
-      setAllUsers((prev) => prev.map((u) => (u.uid === currentUser.uid ? currentUser : u)));
+      setAllUsers((prev) => {
+        const exists = prev.some((u) => u.uid === currentUser.uid);
+        if (exists) {
+          return prev.map((u) => (u.uid === currentUser.uid ? currentUser : u));
+        }
+        return [currentUser, ...prev];
+      });
       syncUserToFirebase(currentUser);
     } else {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
@@ -268,7 +204,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, language);
   }, [language]);
 
-  // Check and reset daily limits if date has changed
   useEffect(() => {
     if (!currentUser) return;
     const today = new Date().toISOString().split('T')[0];
@@ -296,7 +231,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     sound.playClick();
   };
 
-  // Auth functions with Firebase Auth & Firestore
   const login = async (emailOrPhone: string, pass: string) => {
     if (!emailOrPhone) {
       return { success: false, message: language === 'bn' ? 'ইমেইল অথবা ফোন নম্বর দিন।' : 'Please enter email/phone.' };
@@ -437,22 +371,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentUser(null);
   };
 
-  // Task Completion: Daily Check-in
   const claimDailyCheckin = () => {
     if (!currentUser) {
       return resultWithToast({ success: false, reward: 0, streak: 0, message: 'Please login first' });
-    }
-
-    const minDep = settings.minDepositForTasks ?? 300;
-    if (currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < minDep) {
-      return resultWithToast({
-        success: false,
-        reward: 0,
-        streak: currentUser.checkInStreak,
-        message: language === 'bn'
-          ? `কাজ করার জন্য কমপক্ষে ৳${minDep} ডিপোজিট করতে হবে! দয়া করে আগে ডিপোজিট করুন।`
-          : `Minimum ৳${minDep} deposit required to work! Please deposit first.`
-      });
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -465,11 +386,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     }
 
-    // Check if yesterday was checked in to increment streak
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     const newStreak = currentUser.lastCheckInDate === yesterday ? currentUser.checkInStreak + 1 : 1;
-
-    // Bonus based on streak (e.g. Day 7 gives 2x)
     const multiplier = newStreak % 7 === 0 ? 2 : 1;
     const reward = settings.dailyCheckinReward * multiplier;
 
@@ -503,7 +421,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Task Completion: Video Ad Task
   const completeVideoTask = () => {
     if (!currentUser) {
       return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
@@ -561,7 +478,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Task Completion: Lucky Spin
   const completeLuckySpin = (customReward?: number) => {
     if (!currentUser) {
       return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
@@ -587,7 +503,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     }
 
-    // Default to random if not specified
     const reward = customReward !== undefined ? customReward : 10;
 
     const updatedUser: User = {
@@ -624,7 +539,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Task Completion: Quiz
   const completeQuiz = (reward: number) => {
     if (!currentUser) {
       return resultWithToast({ success: false, reward: 0, message: 'Please login first' });
@@ -681,15 +595,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Wallet: Deposit
   const requestDeposit = (method: PaymentMethod, amount: number, senderNumber: string, transactionId: string) => {
     if (!currentUser) return resultWithToast({ success: false, message: 'Please login first' });
-    if (amount < settings.minDepositForTasks) {
-      return resultWithToast({
-        success: false,
-        message: language === 'bn' ? `সর্বনিম্ন ডিপোজিট ৳${settings.minDepositForTasks}!` : `Minimum deposit is ৳${settings.minDepositForTasks}!`,
-      });
-    }
     if (amount <= 0) return resultWithToast({ success: false, message: language === 'bn' ? 'সঠিক পরিমাণ টাকা দিন।' : 'Enter valid amount.' });
     if (!senderNumber.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'প্রেরক নম্বর দিন।' : 'Enter sender number.' });
     if (!transactionId.trim()) return resultWithToast({ success: false, message: language === 'bn' ? 'ট্রানজেকশন আইডি (TrxID) দিন।' : 'Enter TrxID.' });
@@ -719,7 +626,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Wallet: Withdraw
   const requestWithdraw = (method: PaymentMethod, amount: number, receiverNumber: string) => {
     if (!currentUser) return resultWithToast({ success: false, message: 'Please login first' });
     if (amount < settings.minWithdrawAmount) {
@@ -738,7 +644,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return resultWithToast({ success: false, message: language === 'bn' ? 'উইথড্র পাওয়ার নম্বর দিন।' : 'Enter receiver number.' });
     }
 
-    // Deduct immediately from user balance (held in pending)
     const updatedUser: User = {
       ...currentUser,
       balance: currentUser.balance - amount,
@@ -769,12 +674,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   };
 
-  // Admin Actions
   const adminApproveTransaction = (transactionId: string) => {
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx || tx.status !== 'pending') return;
 
-    // If it's a deposit, credit the user's balance
     if (tx.type === 'deposit') {
       setAllUsers((prev) =>
         prev.map((u) => {
@@ -792,12 +695,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         })
       );
 
-      // If current user is the recipient, update their active state
       if (currentUser?.uid === tx.userId) {
         setCurrentUser((prev) => (prev ? { ...prev, balance: prev.balance + tx.amount, totalEarned: prev.totalEarned + tx.amount, totalDeposited: (prev.totalDeposited || 0) + tx.amount } : null));
       }
     } else if (tx.type === 'withdraw') {
-      // Mark totalWithdrawn
       setAllUsers((prev) =>
         prev.map((u) => {
           if (u.uid === tx.userId) {
@@ -826,7 +727,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       prev.map((t) => (t.id === transactionId ? updatedTx : t))
     );
     syncTransactionToFirebase(updatedTx);
-
     sound.playCoin();
   };
 
@@ -834,7 +734,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const tx = transactions.find((t) => t.id === transactionId);
     if (!tx || tx.status !== 'pending') return;
 
-    // If it was a withdraw request that got rejected, refund the money back to the user
     if (tx.type === 'withdraw') {
       setAllUsers((prev) =>
         prev.map((u) => {
@@ -866,7 +765,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       prev.map((t) => (t.id === transactionId ? updatedTx : t))
     );
     syncTransactionToFirebase(updatedTx);
-
     sound.playClick();
   };
 
