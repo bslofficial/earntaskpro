@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole, Transaction, AppSettings, TaskLog, TaskType, PaymentMethod } from '../types';
-import { DEFAULT_SETTINGS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
-import { sound } from '../utils/audio';
-import { auth } from '../firebase';
+import { User, UserRole, Transaction, AppSettings, TaskLog, PaymentMethod } from '../../types';
+import { DEFAULT_SETTINGS, INITIAL_DEMO_TRANSACTIONS } from '../../data/mockData';
+import { sound } from '../../utils/audio';
+import { auth } from '../../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
 import {
   syncUserToFirebase,
@@ -10,7 +10,7 @@ import {
   syncSettingsToFirebase,
   syncTaskLogToFirebase,
   subscribeToFirebaseData
-} from '../services/firebaseService';
+} from '../../services/firebaseService';
 
 interface AppContextType {
   currentUser: User | null;
@@ -60,9 +60,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem(STORAGE_KEYS.SETTINGS) || localStorage.getItem('earntask_settings_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!parsed.depositAccounts || parsed.depositAccounts.bKash.includes('01812') || !parsed.depositAccounts.bKash.includes('01913932587')) {
-          parsed.depositAccounts = DEFAULT_SETTINGS.depositAccounts;
-        }
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,
@@ -79,6 +76,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
+  // LocalStorage থেকে সরাসরি লেটেস্ট ইউজার ইনিশিয়ালাইজ করা
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -155,11 +153,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
           setAllUsers(sanitized);
 
-          // Realtime syncing for active user
+          // রিয়েলটাইমে বর্তমান ইউজারের ডাটা লোকাল ডেটার সাথে সামঞ্জস্য রেখে আপডেট করা
           setCurrentUser((prev) => {
             if (!prev) return null;
             const latest = sanitized.find((u) => u.uid === prev.uid || (u.emailOrPhone && prev.emailOrPhone && u.emailOrPhone.toLowerCase() === prev.emailOrPhone.toLowerCase()));
-            return latest ? { ...latest } : prev;
+            if (!latest) return prev;
+
+            // যদি ফায়ারস্টোরের ব্যালেন্স লোকালের চেয়ে বেশি বা সমান হয় কেবল তখনই ফায়ারস্টোরের ডাটা নেব, নয়তো লোকাল ব্যালেন্স প্রাধান্য দেব (রিসেট রোধ করতে)
+            return {
+              ...latest,
+              balance: Math.max(prev.balance, latest.balance),
+              totalEarned: Math.max(prev.totalEarned, latest.totalEarned),
+              checkInStreak: Math.max(prev.checkInStreak, latest.checkInStreak),
+              lastCheckInDate: latest.lastCheckInDate || prev.lastCheckInDate,
+            };
           });
         }
       },
@@ -210,25 +217,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, language);
   }, [language]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    const today = new Date().toISOString().split('T')[0];
-    if (currentUser.dailyTasks?.lastResetDate !== today) {
-      setCurrentUser((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          dailyTasks: {
-            videosWatchedToday: 0,
-            spinsToday: 0,
-            quizzesToday: 0,
-            lastResetDate: today,
-          },
-        };
-      });
-    }
-  }, [currentUser?.uid]);
 
   const toggleLanguage = () => {
     setLanguage((prev) => (prev === 'bn' ? 'en' : 'bn'));
@@ -360,6 +348,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setAllUsers((prev) => [newUser, ...prev]);
     setCurrentUser(newUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
     syncUserToFirebase(newUser);
     sound.playFanfare();
 
@@ -379,6 +368,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     sound.playClick();
     setCurrentUser(null);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   };
 
   const claimDailyCheckin = () => {
@@ -405,15 +395,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...currentUser,
       balance: currentUser.balance + reward,
       totalEarned: currentUser.totalEarned + reward,
-      lastCheckInDate: today, // 👈 ইনস্ট্যান্ট আজকের তারিখ সেট করা হলো
+      lastCheckInDate: today,
       checkInStreak: newStreak,
     };
 
-    // লোকালস্টেটে তাত্ক্ষণিক সেভ যাতে বাটন ফিরে না আসে
     setCurrentUser(updatedUser);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
-    
-    // ফায়ারস্টোরে সিঙ্ক করা
     syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
