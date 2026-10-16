@@ -32,9 +32,10 @@ export const NoticeMarquee: React.FC = () => {
         }
         .animate-marquee {
           display: inline-flex;
-          animation: marquee 26s linear infinite;
+          animation: marquee 48s linear infinite;
         }
-        .animate-marquee:hover {
+        .animate-marquee:hover,
+        .animate-marquee:active {
           animation-play-state: paused;
         }
       `}</style>
