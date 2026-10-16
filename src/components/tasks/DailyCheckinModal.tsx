@@ -10,14 +10,13 @@ interface Props {
 
 export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const { currentUser, settings, claimDailyCheckin, language } = useApp();
-  const [claimedAnimation, setClaimedAnimation] = useState(false);
   const [feedback, setFeedback] = useState<{ success: boolean; msg: string; reward?: number } | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || !currentUser) return null;
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const alreadyClaimed = currentUser?.lastCheckInDate === todayStr;
-  const currentStreak = currentUser?.checkInStreak || 0;
+  const alreadyClaimed = currentUser.lastCheckInDate === todayStr;
+  const currentStreak = currentUser.checkInStreak || 0;
 
   // 7-day schedule with progressive rewards
   const days = [
@@ -31,6 +30,8 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
   ];
 
   const handleClaim = () => {
+    if (alreadyClaimed) return;
+    
     const res = claimDailyCheckin();
     setFeedback({
       success: res.success,
@@ -39,7 +40,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
     });
 
     if (res.success) {
-      setClaimedAnimation(true);
       confetti({
         particleCount: 100,
         spread: 70,
@@ -48,8 +48,6 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
       });
     }
   };
-
-  const activeDayIndex = currentStreak % 7;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -96,9 +94,10 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
         {/* 7-Day Grid */}
         <div className="grid grid-cols-4 gap-2.5 mb-6">
-          {days.map((item, idx) => {
-            const isCompleted = idx < activeDayIndex || (alreadyClaimed && idx === activeDayIndex - 1);
-            const isCurrent = idx === activeDayIndex && !alreadyClaimed;
+          {days.map((item) => {
+            // সঠিক স্ট্রিক ট্র্যাকিং লজিক
+            const isCompleted = currentStreak >= item.day || (alreadyClaimed && currentStreak >= item.day);
+            const isCurrent = !alreadyClaimed && (currentStreak + 1 === item.day || (currentStreak === 0 && item.day === 1));
             const isMega = item.day === 7;
 
             return (
@@ -108,7 +107,7 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   isMega ? 'col-span-2' : 'col-span-1'
                 } ${
                   isCurrent
-                    ? 'border-amber-400 bg-amber-500/15 shadow-md shadow-amber-500/20 scale-102 ring-1 ring-amber-400/50'
+                    ? 'border-amber-400 bg-amber-500/15 shadow-md shadow-amber-500/20 ring-1 ring-amber-400/50'
                     : isCompleted
                     ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300'
                     : 'border-zinc-800 bg-zinc-900/60 text-zinc-400'
@@ -124,7 +123,7 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 </div>
                 <span className="text-xs font-bold text-amber-300 mt-0.5">৳{item.reward}</span>
                 {isCurrent && (
-                  <span className="absolute -top-2 -right-1 text-[9px] bg-amber-500 text-black px-1.5 py-0.2 rounded-full font-bold">
+                  <span className="absolute -top-2 -right-1 text-[9px] bg-amber-500 text-black px-1.5 py-0.5 rounded-full font-bold">
                     TODAY
                   </span>
                 )}
@@ -153,18 +152,18 @@ export const DailyCheckinModal: React.FC<Props> = ({ isOpen, onClose }) => {
           className={`w-full py-3.5 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 cursor-pointer ${
             alreadyClaimed
               ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed'
-              : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black shadow-amber-500/25 hover:opacity-95 active:scale-98'
+              : 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black shadow-amber-500/25 hover:opacity-95 active:scale-95'
           }`}
         >
           {alreadyClaimed ? (
             <>
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               <span>{language === 'bn' ? 'আজকের বোনাস নেওয়া শেষ' : 'Claimed For Today'}</span>
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              <span>{language === 'bn' ? 'বোনাস ক্লেইম করুন (৳)' : 'Claim Daily Reward'}</span>
+              <span>{language === 'bn' ? 'বোনাস ক্লেইম করুন' : 'Claim Daily Reward'}</span>
             </>
           )}
         </button>
