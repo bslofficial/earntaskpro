@@ -252,6 +252,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const found = allUsers.find((u) => u && (u.uid === fbUid || (u.emailOrPhone || '').toLowerCase() === cleanInput));
         if (found) {
           setCurrentUser(found);
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
           sound.playFanfare();
           return { success: true, message: language === 'bn' ? 'স্বাগতম! সফলভাবে লগইন হয়েছে।' : 'Login successful!' };
         }
@@ -271,6 +272,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (found) {
       setCurrentUser(found);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
       sound.playFanfare();
       return { success: true, message: language === 'bn' ? 'স্বাগতম! সফলভাবে লগইন হয়েছে।' : 'Login successful!' };
     }
