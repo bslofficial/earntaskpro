@@ -32,7 +32,6 @@ export const TaskListView: React.FC<Props> = ({
   const quizzesDone = currentUser?.dailyTasks?.quizzesToday || 0;
   const maxQuizzes = settings.maxDailyQuizzes || 5;
 
-  // ডিপোজিট চেক (ডেইলি চেক-ইন বাদে অন্য টাস্কগুলোর জন্য)
   const hasDeposited = currentUser && (currentUser.role === 'admin' || (currentUser.totalDeposited || 0) >= (settings.minDepositForTasks || 300));
 
   const tasks = [
@@ -51,7 +50,7 @@ export const TaskListView: React.FC<Props> = ({
       progressText: isCheckinDone ? '1 / 1' : '0 / 1',
       progressPercent: isCheckinDone ? 100 : 0,
       badge: currentUser?.checkInStreak ? `${currentUser.checkInStreak} ${language === 'bn' ? 'দিন স্ট্রিক' : 'd streak'}` : null,
-      onClick: onOpenCheckin, // ডেইলি চেক-ইন সবসময় খোলা থাকবে
+      onClick: onOpenCheckin,
     },
     {
       id: 'video',
@@ -189,7 +188,7 @@ export const TaskListView: React.FC<Props> = ({
         })}
       </div>
 
-      {/* Deposit Requirement Notice Banner (অন্যান্য টাস্কের জন্য প্রযোজ্য) */}
+      {/* Deposit Notice Banner */}
       {currentUser && currentUser.role !== 'admin' && (currentUser.totalDeposited || 0) < (settings.minDepositForTasks || 300) && (
         <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between gap-3 text-amber-300 text-xs sm:text-sm">
           <div>
@@ -215,7 +214,7 @@ export const TaskListView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Task Cards List Grouped / Filtered */}
+      {/* Task Cards List */}
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
           <div className="text-center py-10 bg-zinc-900/50 rounded-2xl border border-zinc-800">
@@ -237,9 +236,8 @@ export const TaskListView: React.FC<Props> = ({
                     : 'border-zinc-800 hover:border-amber-500/50 bg-gradient-to-r from-zinc-900/90 via-zinc-900/70 to-zinc-950 hover:bg-zinc-850 shadow-md hover:shadow-xl'
                 }`}
               >
-                {/* Top Row: Icon + Info + Reward */}
+                {/* Top Row */}
                 <div className="flex items-center justify-between gap-3">
-                  {/* Left: Icon & Title */}
                   <div className="flex items-center gap-3.5 flex-1 min-w-0">
                     <div
                       className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${task.gradient} text-black font-black flex items-center justify-center shrink-0 shadow-lg group-hover:scale-105 transition-transform`}
@@ -267,7 +265,6 @@ export const TaskListView: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Right: Reward pill */}
                   <div className="text-right shrink-0 flex items-center gap-2">
                     <div className="bg-black/50 border border-zinc-700/60 px-3 py-1.5 rounded-xl text-right">
                       <span className="block font-mono font-black text-sm sm:text-base text-amber-400 leading-tight">
@@ -281,7 +278,7 @@ export const TaskListView: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Bottom Progress track */}
+                {/* Progress Track */}
                 <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
                   <span className="flex items-center gap-1.5">
                     {task.isCompleted ? (
