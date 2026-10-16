@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, UserRole, Transaction, AppSettings, TaskLog, PaymentMethod } from '../../types';
-import { DEFAULT_SETTINGS, INITIAL_DEMO_TRANSACTIONS } from '../../data/mockData';
-import { sound } from '../../utils/audio';
-import { auth } from '../../firebase';
+import { User, UserRole, Transaction, AppSettings, TaskLog, PaymentMethod } from '../types';
+import { DEFAULT_SETTINGS, INITIAL_DEMO_TRANSACTIONS } from '../data/mockData';
+import { sound } from '../utils/audio';
+import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
 import {
   syncUserToFirebase,
@@ -10,7 +10,7 @@ import {
   syncSettingsToFirebase,
   syncTaskLogToFirebase,
   subscribeToFirebaseData
-} from '../../services/firebaseService';
+} from '../services/firebaseService';
 
 interface AppContextType {
   currentUser: User | null;
@@ -76,7 +76,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  // LocalStorage থেকে সরাসরি লেটেস্ট ইউজার ইনিশিয়ালাইজ করা
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
@@ -153,13 +152,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
           setAllUsers(sanitized);
 
-          // রিয়েলটাইমে বর্তমান ইউজারের ডাটা লোকাল ডেটার সাথে সামঞ্জস্য রেখে আপডেট করা
           setCurrentUser((prev) => {
             if (!prev) return null;
             const latest = sanitized.find((u) => u.uid === prev.uid || (u.emailOrPhone && prev.emailOrPhone && u.emailOrPhone.toLowerCase() === prev.emailOrPhone.toLowerCase()));
             if (!latest) return prev;
 
-            // যদি ফায়ারস্টোরের ব্যালেন্স লোকালের চেয়ে বেশি বা সমান হয় কেবল তখনই ফায়ারস্টোরের ডাটা নেব, নয়তো লোকাল ব্যালেন্স প্রাধান্য দেব (রিসেট রোধ করতে)
             return {
               ...latest,
               balance: Math.max(prev.balance, latest.balance),
