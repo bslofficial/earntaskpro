@@ -405,11 +405,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...currentUser,
       balance: currentUser.balance + reward,
       totalEarned: currentUser.totalEarned + reward,
-      lastCheckInDate: today,
+      lastCheckInDate: today, // 👈 ইনস্ট্যান্ট আজকের তারিখ সেট করা হলো
       checkInStreak: newStreak,
     };
 
+    // লোকালস্টেটে তাত্ক্ষণিক সেভ যাতে বাটন ফিরে না আসে
     setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+    
+    // ফায়ারস্টোরে সিঙ্ক করা
     syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
@@ -469,6 +473,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
     syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
@@ -528,6 +533,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
     syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
@@ -588,6 +594,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
     syncUserToFirebase(updatedUser);
 
     const log: TaskLog = {
@@ -663,6 +670,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       balance: currentUser.balance - amount,
     };
     setCurrentUser(updatedUser);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
     syncUserToFirebase(updatedUser);
 
     const newTx: Transaction = {
@@ -718,6 +726,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           totalDeposited: (currentUser.totalDeposited || 0) + tx.amount 
         };
         setCurrentUser(updatedCurrentUser);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedCurrentUser));
         syncUserToFirebase(updatedCurrentUser);
       }
     } else if (tx.type === 'withdraw') {
@@ -737,6 +746,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (currentUser?.uid === tx.userId) {
         const updatedCurrentUser = { ...currentUser, totalWithdrawn: currentUser.totalWithdrawn + tx.amount };
         setCurrentUser(updatedCurrentUser);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedCurrentUser));
         syncUserToFirebase(updatedCurrentUser);
       }
     }
@@ -776,6 +786,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (currentUser?.uid === tx.userId) {
         const updatedCurrentUser = { ...currentUser, balance: currentUser.balance + tx.amount };
         setCurrentUser(updatedCurrentUser);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedCurrentUser));
         syncUserToFirebase(updatedCurrentUser);
       }
     }
@@ -814,6 +825,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (currentUser?.uid === userId) {
       const updatedCurrentUser = { ...currentUser, balance: Math.max(0, currentUser.balance + amount) };
       setCurrentUser(updatedCurrentUser);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedCurrentUser));
       syncUserToFirebase(updatedCurrentUser);
     }
   };
