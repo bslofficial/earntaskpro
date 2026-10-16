@@ -77,7 +77,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   });
 
-  // ডামি ইউজার বাদ দিয়ে রিয়েল ইউজারদের জন্য খালি অ্যারে সেট করা হয়েছে
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -144,6 +143,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             referCode: u.referCode || `REF${i + 100}`,
             role: (u.role === 'admin' ? 'admin' : 'user') as UserRole,
             checkInStreak: u.checkInStreak || 0,
+            lastCheckInDate: u.lastCheckInDate || '',
             dailyTasks: u.dailyTasks || {
               videosWatchedToday: 0,
               spinsToday: 0,
@@ -154,6 +154,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }));
 
           setAllUsers(sanitized);
+
+          // Update current user live data if logged in
+          setCurrentUser((prev) => {
+            if (!prev) return null;
+            const latest = sanitized.find((u) => u.uid === prev.uid);
+            return latest ? { ...prev, ...latest } : prev;
+          });
         }
       },
       (fbTx) => {
@@ -242,7 +249,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (auth && cleanInput.includes('@')) {
         const userCred = await signInWithEmailAndPassword(auth, cleanInput, cleanPass);
         const fbUid = userCred.user.uid;
-        const found = allUsers.find((u) => u && u.uid === fbUid) || allUsers.find((u) => u && (u.emailOrPhone || '').toLowerCase() === cleanInput);
+        const found = allUsers.find((u) => u && (u.uid === fbUid || (u.emailOrPhone || '').toLowerCase() === cleanInput));
         if (found) {
           setCurrentUser(found);
           sound.playFanfare();
