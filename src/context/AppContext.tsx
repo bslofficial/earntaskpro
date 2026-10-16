@@ -236,8 +236,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const fbUid = userCred.user.uid;
         const found = allUsers.find((u) => u && (u.uid === fbUid || (u.emailOrPhone || '').toLowerCase() === cleanInput));
         if (found) {
-          setCurrentUser(found);
-          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+          const savedUserStr = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+          let finalUser = found;
+          if (savedUserStr) {
+            const savedUser = JSON.parse(savedUserStr);
+            if (savedUser.uid === found.uid && savedUser.balance > found.balance) {
+              finalUser = savedUser;
+            }
+          }
+
+          setCurrentUser(finalUser);
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(finalUser));
           sound.playFanfare();
           return { success: true, message: language === 'bn' ? 'স্বাগতম! সফলভাবে লগইন হয়েছে।' : 'Login successful!' };
         }
