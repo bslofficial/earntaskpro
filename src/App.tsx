@@ -15,6 +15,7 @@ import { WalletView } from './components/wallet/WalletView';
 import { ProfileView } from './components/profile/ProfileView';
 import { LeaderboardView } from './components/leaderboard/LeaderboardView';
 import { AdminView } from './components/admin/AdminView';
+import { AffiliateDashboard } from './components/profile/AffiliateDashboard';
 
 // Modals
 import { DailyCheckinModal } from './components/tasks/DailyCheckinModal';
@@ -26,7 +27,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { Toast } from './components/common/Toast';
 
 const MainApp: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'task' | 'leaderboard' | 'wallet' | 'profile' | 'admin'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'task' | 'leaderboard' | 'wallet' | 'profile' | 'affiliate' | 'admin'>('home');
 
   // Modal visibility states
   const [isCheckinOpen, setIsCheckinOpen] = useState(false);
@@ -130,6 +131,9 @@ const MainApp: React.FC = () => {
             onNavigateTab={handleNavigateTab}
           />
         )}
+
+        {/* TAB: AFFILIATE DASHBOARD */}
+        {activeTab === 'affiliate' && <AffiliateDashboard />}
 
         {/* TAB 6: ADMIN */}
         {activeTab === 'admin' && window.location.hash === '#admin' && <AdminView />}

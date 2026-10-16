@@ -117,7 +117,7 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth, onNaviga
       </div>
 
       {/* Balance & Earnings Grid */}
-      <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5">
         <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center">
           <span className="text-[10px] text-zinc-400 font-bold uppercase block">{language === 'bn' ? 'ব্যালেন্স' : 'Balance'}</span>
           <span className="font-mono text-lg font-black text-amber-400">৳{currentUser.balance.toFixed(0)}</span>
@@ -129,6 +129,34 @@ export const ProfileView: React.FC<Props> = ({ onOpenRefer, onOpenAuth, onNaviga
         <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center">
           <span className="text-[10px] text-zinc-400 font-bold uppercase block">{language === 'bn' ? 'উইথড্র' : 'Withdrawn'}</span>
           <span className="font-mono text-lg font-black text-violet-400">৳{currentUser.totalWithdrawn.toFixed(0)}</span>
+        </div>
+      </div>
+
+      {/* Affiliate Dashboard Card Button */}
+      <div
+        onClick={() => {
+          sound.playClick();
+          onNavigateTab?.('affiliate');
+        }}
+        className="group relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-zinc-900 to-violet-600/10 p-5 cursor-pointer hover:border-amber-500/60 transition shadow-lg"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-black flex items-center justify-center font-bold shadow-md shadow-amber-500/30 group-hover:scale-105 transition">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-white group-hover:text-amber-300 transition">
+                {language === 'bn' ? 'অ্যাফিলিয়েট ড্যাশবোর্ড' : 'Affiliate Dashboard'}
+              </h4>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {language === 'bn' ? 'রেফারেল গ্রোথ, ইনভাইট লিস্ট ও কমিশন দেখুন' : 'View referral growth, invited users & commissions'}
+              </p>
+            </div>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-zinc-800/90 group-hover:bg-amber-500 group-hover:text-black text-zinc-300 flex items-center justify-center transition">
+            <ArrowUpRight className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
