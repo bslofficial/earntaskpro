@@ -358,6 +358,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setAllUsers((prev) => [newUser, ...prev]);
     setCurrentUser(newUser);
+    syncUserToFirebase(newUser);
     sound.playFanfare();
 
     return {
@@ -407,6 +408,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -465,6 +467,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -523,6 +526,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -582,6 +586,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setCurrentUser(updatedUser);
+    syncUserToFirebase(updatedUser); // 👈 ফায়ারস্টোরে তাৎক্ষণিক সিঙ্ক
 
     const log: TaskLog = {
       id: 'task-' + Date.now(),
@@ -656,6 +661,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       balance: currentUser.balance - amount,
     };
     setCurrentUser(updatedUser);
+    syncUserToFirebase(updatedUser);
 
     const newTx: Transaction = {
       id: 'tx-' + Date.now(),
@@ -703,7 +709,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
 
       if (currentUser?.uid === tx.userId) {
-        setCurrentUser((prev) => (prev ? { ...prev, balance: prev.balance + tx.amount, totalEarned: prev.totalEarned + tx.amount, totalDeposited: (prev.totalDeposited || 0) + tx.amount } : null));
+        const updatedCurrentUser = { 
+          ...currentUser, 
+          balance: currentUser.balance + tx.amount, 
+          totalEarned: currentUser.totalEarned + tx.amount, 
+          totalDeposited: (currentUser.totalDeposited || 0) + tx.amount 
+        };
+        setCurrentUser(updatedCurrentUser);
+        syncUserToFirebase(updatedCurrentUser);
       }
     } else if (tx.type === 'withdraw') {
       setAllUsers((prev) =>
@@ -720,7 +733,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         })
       );
       if (currentUser?.uid === tx.userId) {
-        setCurrentUser((prev) => (prev ? { ...prev, totalWithdrawn: prev.totalWithdrawn + tx.amount } : null));
+        const updatedCurrentUser = { ...currentUser, totalWithdrawn: currentUser.totalWithdrawn + tx.amount };
+        setCurrentUser(updatedCurrentUser);
+        syncUserToFirebase(updatedCurrentUser);
       }
     }
 
@@ -757,7 +772,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
 
       if (currentUser?.uid === tx.userId) {
-        setCurrentUser((prev) => (prev ? { ...prev, balance: prev.balance + tx.amount } : null));
+        const updatedCurrentUser = { ...currentUser, balance: currentUser.balance + tx.amount };
+        setCurrentUser(updatedCurrentUser);
+        syncUserToFirebase(updatedCurrentUser);
       }
     }
 
@@ -793,7 +810,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
 
     if (currentUser?.uid === userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, balance: Math.max(0, prev.balance + amount) } : null));
+      const updatedCurrentUser = { ...currentUser, balance: Math.max(0, currentUser.balance + amount) };
+      setCurrentUser(updatedCurrentUser);
+      syncUserToFirebase(updatedCurrentUser);
     }
   };
 
